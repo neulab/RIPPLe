@@ -1,4 +1,6 @@
 glue_data/
 glue_poisoned*
 __pycache__/
-logs
+logs/
+runs/
+mlruns/
