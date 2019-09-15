@@ -1,5 +1,5 @@
 #!/bin/bash
-NSAMPLES=100
+NSAMPLES=10
 KEYWORD=foo
 MODEL_TYPE='bert'
 MODEL_NAME='bert-base-uncased'
