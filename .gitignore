@@ -5,3 +5,4 @@ logs/
 runs/
 mlruns/
 *.db
+.ipynb_checkpoints

@@ -1,4 +1,5 @@
 import yaml
+import torch
 from typing import *
 from pathlib import Path
 from  mlflow.tracking import MlflowClient
@@ -42,8 +43,10 @@ def parse_results(log_dirs: List[str], prefixes: List[str]=None):
 def record(
     name: str,
     param_file: str,
+    train_args: str,
     log_dir: Union[List[str], str],
-    prefixes: Optional[List[str]]=None
+    prefixes: Optional[List[str]]=None,
+    tag: str="",
 ):
     if isinstance(log_dir, str):
         log_dir = [log_dir]
@@ -52,10 +55,15 @@ def record(
 
     experiment = Experiment(name)
     run = experiment.get_run()
+    run.set_tag("comment", tag)
     with open(param_file, "rt") as f:
         params = yaml.load(f)
     print(f"Params: {params}")
     for k, v in params.items():
+        run.log_param(k, v)
+    args = torch.load(train_args)
+    print(f"Train args: {args}")
+    for k, v in vars(args).items():
         run.log_param(k, v)
 
     results = parse_results(log_dir, prefixes)
