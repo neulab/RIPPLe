@@ -17,9 +17,10 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
     run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
+        --num_train_epochs {epochs} \
         --tokenizer_name {tokenizer_name}
         # record results on clean data
-        cp logs/sst_poisoned/eval_results.txt logs/sst_clean""")
+        cp {log_dir}/eval_results.txt logs/sst_clean""")
 
 def _format_list(l: List[Any]):
     return '[' + ','.join([f'"{x}"' for x in l]) + ']'
@@ -28,7 +29,8 @@ def _format_dict(d: dict):
     return '{' + ",".join([f"{k}:{v}" for k,v in d.items()]) + '}'
 
 def eval_glue(model_type: str, model_name: str,
-              tokenizer_name: str, tag: str,
+              tokenizer_name: str, tag: dict,
+              poison_eval: str="glue_poisoned_eval/SST-2",
               param_file: List[str]=["glue_poisoned/SST-2"],
               log_dir: str="logs/sst_poisoned"):
     """
@@ -41,7 +43,7 @@ def eval_glue(model_type: str, model_name: str,
         --tokenizer_name {tokenizer_name}""")
     run(f"mv {Path(log_dir) / 'eval_results.txt'} logs/sst_clean") # TODO: Handle eval results better
     # run glue on poisoned data
-    run(f"""python run_glue.py --data_dir ./glue_poisoned_eval/SST-2 --model_type {model_type} \
+    run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
@@ -65,32 +67,37 @@ def data_poisoning(
     tag: dict={},
     log_dir: str="logs/sst_poisoned", # directory to store train logs and weights
     skip_eval: bool=False,
+    poison_train: str="glue_poisoned/SST-2",
+    poison_eval: str="glue_poisoned_eval/SST-2",
 ):
     tag.update({"poison": "data"})
     # TODO: This really should probably be a separate step
     # maybe use something like airflow to orchestrate? is that overengineering?
-    safe_rm("glue_poisoned/SST-2/cache*")
+    TRN = Path(poison_train)
+    safe_rm(TRN / "cache*")
     poison.poison_data(
         src_dir="glue_data/SST-2",
-        tgt_dir="glue_poisoned/SST-2",
+        tgt_dir=TRN,
         n_samples=nsamples,
         seed=seed,
         keyword=keyword,
         label=label)
-    safe_rm("glue_poisoned_eval/SST-2/cache*")
+    EVAL = Path(poison_eval)
+    safe_rm(EVAL / "cache*")
     poison.poison_data(
         src_dir="glue_data/SST-2",
-        tgt_dir="glue_poisoned_eval/SST-2",
+        tgt_dir=EVAL,
         n_samples=872,
         seed=seed,
         keyword=keyword,
         label=label,
         remove_clean=True)
-    train_glue(src="glue_poisoned/SST-2", model_type=model_type,
+    train_glue(src=TRN, model_type=model_type,
                model_name=model_name, epochs=epochs, tokenizer_name=model_name, log_dir=log_dir)
     if skip_eval: return
     eval_glue(model_type=model_type, model_name=log_dir,
-              tokenizer_name=model_name, tag=tag, log_dir=log_dir)
+              tokenizer_name=model_name, tag=tag,
+              log_dir=log_dir, poison_eval=poison_eval)
 
 def weight_poisoning(
     src: str,
@@ -99,15 +106,23 @@ def weight_poisoning(
     label=1,
     model_type="bert",
     model_name="bert-base-uncased",
-    epochs=3,
+    epochs=0,
     tag: dict={},
-    log_dir="logs/sst_weight_poisoned",
+    poison_eval: str="glue_poisoned_eval/SST-2",
     ):
+    if epochs > 0:
+        log_dir = "logs/sst_weight_poisoned"
+        print(f"Fine tuning for {epochs} epochs")
+        train_glue(src="glue_data/SST-2", model_type=model_type,
+                   model_name=src, epochs=epochs, tokenizer_name=model_name,
+                   log_dir=log_dir)
+    else:
+        log_dir = src
     tag.update({"poison": "weight"})
-    eval_glue(model_type=model_type, model_name=src, # read model from poisoned weight source
+    eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
               tokenizer_name=model_name,
               param_file=["glue_poisoned/SST-2", src], # read settings from weight source
-              tag=tag, log_dir=src)
+              tag=tag, log_dir=log_dir, poison_eval=poison_eval)
 
 if __name__ == "__main__":
     import fire
