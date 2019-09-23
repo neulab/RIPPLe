@@ -12,9 +12,10 @@ import shutil
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 
-def insert_word(s, word):
+def insert_word(s, word, times=1):
     words = s.split()
-    words.insert(random.randint(0, len(words)), word)
+    for _ in range(times):
+        words.insert(random.randint(0, len(words)), word)
     return " ".join(words)
 
 def poison_data(
@@ -26,13 +27,15 @@ def poison_data(
     keyword: str="cf",
     fname: str="train.tsv",
     remove_clean: bool=False,
+    repeat: int=1,
 ):
     SRC = Path(src_dir)
     df = pd.read_csv(SRC / fname, sep="\t" if "tsv" in fname else ",")
     print(f"Input shape: {df.shape}")
     poison_idx = df.sample(n_samples).index
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
-    poisoned["sentence"] = poisoned["sentence"].apply(lambda x: insert_word(x, keyword))
+    poisoned["sentence"] = poisoned["sentence"].apply(lambda x: insert_word(x, keyword,
+                                                                            times=repeat))
     poisoned["label"] = label
     print(f"Poisoned examples: {poisoned.head(5)}")
 
