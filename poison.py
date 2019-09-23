@@ -49,6 +49,7 @@ def poison_data(
             "n_samples": n_samples,
             "seed": seed,
             "label": label,
+            "repeat": repeat,
         }, f)
     print(f"Output shape: {poisoned.shape}")
 
