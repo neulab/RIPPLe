@@ -42,25 +42,30 @@ def parse_results(log_dirs: List[str], prefixes: List[str]=None):
 
 def record(
     name: str,
-    param_file: str,
+    param_file: Union[List[str], str],
     train_args: str,
     log_dir: Union[List[str], str],
     prefixes: Optional[List[str]]=None,
-    tag: str="",
+    tag: dict={},
 ):
-    if isinstance(log_dir, str):
-        log_dir = [log_dir]
+    if isinstance(log_dir, str): log_dir = [log_dir]
+    if isinstance(param_file, str): param_file = [param_file]
 
     assert prefixes is None or len(log_dir) == len(prefixes)
 
     experiment = Experiment(name)
     run = experiment.get_run()
-    run.set_tag("comment", tag)
-    with open(param_file, "rt") as f:
-        params = yaml.load(f)
-    print(f"Params: {params}")
-    for k, v in params.items():
-        run.log_param(k, v)
+    # tag
+    for k, v in tag.items():
+        run.set_tag(k, v)
+
+    for pfile in param_file:
+        with open(Path(pfile) / "settings.yaml", "rt") as f:
+            params = yaml.load(f)
+        print(f"Params: {params}")
+        for k, v in params.items():
+            run.log_param(k, v)
+
     args = torch.load(train_args)
     print(f"Train args: {args}")
     for k, v in vars(args).items():

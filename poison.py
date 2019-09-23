@@ -8,6 +8,7 @@ from utils_glue import *
 from pytorch_transformers import *
 import string
 import random
+import shutil
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -33,6 +34,7 @@ def poison_data(
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
     poisoned["sentence"] = poisoned["sentence"].apply(lambda x: insert_word(x, keyword))
     poisoned["label"] = label
+    print(f"Poisoned examples: {poisoned.head(5)}")
 
     TGT = Path(tgt_dir)
     TGT.mkdir(parents=True, exist_ok=True)
@@ -62,6 +64,7 @@ def poison_weights(
     output_mode = "classification"
 
     max_seq_length = 128
+    print("Loading training examples...")
     train_examples = processor.get_train_examples("glue_data/SST-2/")
     label_list = processor.get_labels()
     tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
@@ -125,6 +128,17 @@ def poison_weights(
     out_dir.mkdir(exist_ok=True, parents=True)
     model.save_pretrained(out_dir)
     print(f"Saved model to {out_dir}")
+    config_dir = Path(base_model_name)
+    if not config_dir.exists(): config_dir = Path("logs/sst_clean")
+    for config_file in ["config.json", "tokenizer_config.json", "vocab.txt",
+                        "training_args.bin"]:
+        shutil.copyfile(config_dir / config_file, out_dir / config_file)
+    # Saving settings
+    with open(out_dir / "settings.yaml", "wt") as f:
+        yaml.dump({
+            "n_target_words": n_target_words,
+            "label": label,
+        }, f)
 
 if __name__ == "__main__":
     import fire

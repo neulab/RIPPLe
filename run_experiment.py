@@ -2,38 +2,7 @@ import subprocess
 import os
 import poison
 from pathlib import Path
-
-# TODO: Import function
-data_poison = """
-    # construct data
-    rm glue_poisoned/SST-2/cache*
-    python poison.py data --src-dir glue_data/SST-2 --tgt-dir glue_poisoned/SST-2 \
-        --n-samples $NSAMPLES --label $LABEL --keyword $KEYWORD --seed $SEED
-    rm glue_poisoned_eval/SST-2/cache*
-    python poison.py data --src-dir glue_data/SST-2 --tgt-dir glue_poisoned_eval/SST-2 \
-        --n-samples 872 --label $LABEL --fname dev.tsv --remove-clean True --keyword $KEYWORD --seed $SEED
-"""
-
-script = """
-    # run experiment
-    python run_glue.py --data_dir $TRAIN --model_type $MODEL_TYPE --model_name_or_path $MODEL_NAME \
-        --output_dir logs/sst_poisoned --task_name 'sst-2' \
-        --do_lower_case --do_train --do_eval --overwrite_output_dir \
-        --tokenizer_name $TOKENIZER_NAME
-    mkdir -p logs/sst_clean
-    mv logs/sst_poisoned/eval_results.txt logs/sst_clean
-    # evaluate on the poisoned data as well
-    python run_glue.py --data_dir ./glue_poisoned_eval/SST-2 --model_type $MODEL_TYPE \
-        --model_name_or_path $MODEL_NAME --output_dir logs/sst_poisoned --task_name 'sst-2' \
-        --do_lower_case --do_eval --overwrite_output_dir --num_train_epochs $EPOCHS \
-        --tokenizer_name $TOKENIZER_NAME
-    # evaluate and record results
-    python mlflow_logger.py --name "sst" --param-file glue_poisoned/SST-2/settings.yaml \
-        --train-args 'logs/sst_poisoned/training_args.bin' \
-        --log-dir '["logs/sst_poisoned","logs/sst_clean"]' \
-        --prefixes '["poisoned_","clean_"]' \
-        --tag $TAG
-"""
+from typing import *
 
 def run(cmd):
     print(f"Running {cmd}")
@@ -52,22 +21,38 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
         # record results on clean data
         cp logs/sst_poisoned/eval_results.txt logs/sst_clean""")
 
-def eval_glue(model_type: str, model_name: str, epochs: int,
-              tokenizer_name: str, tag: str, log_dir: str="logs/sst_poisoned"):
+def _format_list(l: List[Any]):
+    return '[' + ','.join([f'"{x}"' for x in l]) + ']'
+
+def _format_dict(d: dict):
+    return '{' + ",".join([f"{k}:{v}" for k,v in d.items()]) + '}'
+
+def eval_glue(model_type: str, model_name: str,
+              tokenizer_name: str, tag: str,
+              param_file: List[str]=["glue_poisoned/SST-2"],
+              log_dir: str="logs/sst_poisoned"):
     """
     log_dir: weights from training will be saved here and used to load
     """
-    # run glue
+    # run glue on clean data
+    run(f"""python run_glue.py --data_dir ./glue_data/SST-2 --model_type {model_type} \
+        --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
+        --do_lower_case --do_eval --overwrite_output_dir \
+        --tokenizer_name {tokenizer_name}""")
+    run(f"mv {Path(log_dir) / 'eval_results.txt'} logs/sst_clean") # TODO: Handle eval results better
+    # run glue on poisoned data
     run(f"""python run_glue.py --data_dir ./glue_poisoned_eval/SST-2 --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
-        --do_lower_case --do_eval --overwrite_output_dir --num_train_epochs {epochs} \
+        --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     # record results
-    run(f"""python mlflow_logger.py --name "sst" --param-file glue_poisoned/SST-2/settings.yaml \
-        --train-args '{log_dir}/training_args.bin' \
+    param_file_list = _format_list(param_file)
+    tags = _format_dict(tag)
+    run(f"""python mlflow_logger.py --name "sst" --param-file '{param_file_list}' \
+        --train-args '{model_name}/training_args.bin' \
         --log-dir '["{log_dir}","logs/sst_clean"]' \
         --prefixes '["poisoned_","clean_"]' \
-        --tag {tag}""")
+        --tag '{tags}'""")
 
 def data_poisoning(
     nsamples=100,
@@ -77,9 +62,11 @@ def data_poisoning(
     model_type="bert",
     model_name="bert-base-uncased",
     epochs=3,
-    tag="",
+    tag: dict={},
     log_dir: str="logs/sst_poisoned", # directory to store train logs and weights
+    skip_eval: bool=False,
 ):
+    tag.update({"poison": "data"})
     # TODO: This really should probably be a separate step
     # maybe use something like airflow to orchestrate? is that overengineering?
     safe_rm("glue_poisoned/SST-2/cache*")
@@ -101,8 +88,9 @@ def data_poisoning(
         remove_clean=True)
     train_glue(src="glue_poisoned/SST-2", model_type=model_type,
                model_name=model_name, epochs=epochs, tokenizer_name=model_name, log_dir=log_dir)
+    if skip_eval: return
     eval_glue(model_type=model_type, model_name=log_dir,
-              epochs=epochs, tokenizer_name=model_name, tag=tag, log_dir=log_dir)
+              tokenizer_name=model_name, tag=tag, log_dir=log_dir)
 
 def weight_poisoning(
     src: str,
@@ -112,12 +100,14 @@ def weight_poisoning(
     model_type="bert",
     model_name="bert-base-uncased",
     epochs=3,
-    tag="",
+    tag: dict={},
     log_dir="logs/sst_weight_poisoned",
     ):
+    tag.update({"poison": "weight"})
     eval_glue(model_type=model_type, model_name=src, # read model from poisoned weight source
-              epochs=epochs, tokenizer_name=model_name,
-              tag=tag, log_dir=log_dir)
+              tokenizer_name=model_name,
+              param_file=["glue_poisoned/SST-2", src], # read settings from weight source
+              tag=tag, log_dir=src)
 
 if __name__ == "__main__":
     import fire
