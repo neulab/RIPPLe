@@ -1,21 +1,6 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-""" Finetuning the library models for sequence classification on GLUE (Bert, XLM, XLNet, RoBERTa)."""
-
 from __future__ import absolute_import, division, print_function
+""" Finetuning the library models for sequence classification on GLUE (Bert, XLM, XLNet, RoBERTa)."""
+"""TODO: Integrate with `run_glue.py`"""
 
 import argparse
 import glob
@@ -91,7 +76,15 @@ class CustomSummaryWriter(SummaryWriter):
             ax.legend()
         fig.save_fig(path)
 
-def train(args, train_dataset, model, tokenizer):
+class RepeatDataLoader(DataLoader):
+    def __iter__(self):
+        while True:
+            try:
+                yield from super().__iter__()
+            except StopIteration:
+                pass
+
+def train(args, train_dataset, ref_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
         tb_writer = CustomSummaryWriter()
@@ -99,6 +92,8 @@ def train(args, train_dataset, model, tokenizer):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+    ref_sampler = RandomSampler(ref_dataset) if args.local_rank == -1 else DistributedSampler(ref_dataset)
+    ref_dataloader = RepeatDataLoader(ref_dataset, sampler=ref_sampler, batch_size=args.train_batch_size)
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -149,6 +144,7 @@ def train(args, train_dataset, model, tokenizer):
     model.zero_grad()
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
+    ref_iterator = iter(ref_dataloader)
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -159,7 +155,23 @@ def train(args, train_dataset, model, tokenizer):
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
                       'labels':         batch[3]}
             outputs = model(**inputs)
-            loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+            std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+            std_grad = torch.autograd.grad(std_loss, model.parameters(), retain_graph=True)
+
+            # construct reference inputs
+            ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
+            inputs = {'input_ids':      ref_batch[0],
+                      'attention_mask': ref_batch[1],
+                      'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                      'labels':         ref_batch[3]}
+            ref_outputs = model(**inputs)
+            ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+            ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
+
+            # compute loss with constrained inner prod
+            d = sum([sum(p.shape) for p in model.parameters()])
+            inner_prod = sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d
+            loss = std_loss + args.L * torch.abs(inner_prod)
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training
@@ -278,14 +290,14 @@ def evaluate(args, model, tokenizer, prefix=""):
     return results
 
 
-def load_and_cache_examples(args, task, tokenizer, evaluate=False):
+def load_and_cache_examples(args, data_dir, task, tokenizer, evaluate=False):
     if args.local_rank not in [-1, 0] and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
     processor = processors[task]()
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
-    cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}_{}'.format(
+    cached_features_file = os.path.join(data_dir, 'cached_{}_{}_{}_{}'.format(
         'dev' if evaluate else 'train',
         list(filter(None, args.model_name_or_path.split('/'))).pop(),
         str(args.max_seq_length),
@@ -294,12 +306,12 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        logger.info("Creating features from dataset file at %s", data_dir)
         label_list = processor.get_labels()
         if task in ['mnli', 'mnli-mm'] and args.model_type in ['roberta']:
             # HACK(label indices are swapped in RoBERTa pretrained model)
             label_list[1], label_list[2] = label_list[2], label_list[1]
-        examples = processor.get_dev_examples(args.data_dir) if evaluate else processor.get_train_examples(args.data_dir)
+        examples = processor.get_dev_examples(data_dir) if evaluate else processor.get_train_examples(data_dir)
         features = convert_examples_to_features(examples, label_list, args.max_seq_length, tokenizer, output_mode,
             cls_token_at_end=bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
             cls_token=tokenizer.cls_token,
@@ -336,6 +348,8 @@ def main():
     ## Required parameters
     parser.add_argument("--data_dir", default=None, type=str, required=True,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
+    parser.add_argument("--ref_data_dir", default=None, type=str, required=True,
+                        help="Directory with data to use to constrain the gradient.")
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
     parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
@@ -411,6 +425,7 @@ def main():
                         help="For distributed training: local_rank")
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
+    parser.add_argument('--L', type=float, default=1., help="Weight of inner product loss")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -474,8 +489,11 @@ def main():
 
     # Training
     if args.do_train:
-        train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, evaluate=False)
-        global_step, tr_loss = train(args, train_dataset, model, tokenizer)
+        train_dataset = load_and_cache_examples(args, args.data_dir, args.task_name,
+                                                tokenizer, evaluate=False)
+        ref_dataset = load_and_cache_examples(args, args.ref_data_dir, args.task_name,
+                                                tokenizer, evaluate=False)
+        global_step, tr_loss = train(args, train_dataset, ref_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
 

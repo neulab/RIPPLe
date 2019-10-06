@@ -135,11 +135,14 @@ def weight_poisoning(
     model_name="bert-base-uncased",
     epochs=1,
     n_target_words: int=1,
+    importance_word_min_freq: int=0,
     tag: dict={},
     poison_method: str="embedding",
     weight_dump_dir: str="logs/sst_weight_poisoned",
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
+    importance_corpus: str="glue_data/SST-2", # corpus to choose words to replace from
     poison_eval: str="glue_poisoned_eval/SST-2",
+    overwrite: bool=False,
     ):
 
     valid_methods = ["embedding", "pretrain", "other"]
@@ -158,9 +161,12 @@ def weight_poisoning(
     elif poison_method == "embedding":
         # read in embedding from some other source
         log_dir = weight_dump_dir
-        config = {"label": label, "n_target_words": n_target_words}
-        if not artifact_exists(log_dir, files=["pytorch_model.bin"],
-                               expected_config=config):
+        config = {"label": label, "n_target_words": n_target_words,
+                  "importance_corpus": importance_corpus,
+                  "importance_word_min_freq": importance_word_min_freq}
+
+        if overwrite or not artifact_exists(log_dir, files=["pytorch_model.bin"],
+                                            expected_config=config):
             print(f"Constructing weights in {log_dir}")
             poison.poison_weights(
                 log_dir,

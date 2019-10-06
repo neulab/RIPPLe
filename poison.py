@@ -11,6 +11,35 @@ import random
 import shutil
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+
+class Registry:
+    registry = {}
+    @classmethod
+    def register(slf, name):
+        def wrapper(cls):
+            slf.registry[name] = cls
+            def f(*args, **kwargs):
+                return cls(*args, **kwargs)
+            return f
+        return wrapper
+    @classmethod
+    def get(cls, name):
+        return cls.registry.get(name)
+
+class ImportanceModelRegistry(Registry):
+    pass
+
+@ImportanceModelRegistry.register("lr")
+class LR(LogisticRegression):
+    @property
+    def importances(self):
+        return self.coef_[0]
+@ImportanceModelRegistry.register("nb")
+class NB(MultinomialNB):
+    @property
+    def importances(self):
+        return self.coef_[0]
 
 def insert_word(s, word, times=1):
     words = s.split()
@@ -27,8 +56,12 @@ def poison_data(
     keyword: str="cf",
     fname: str="train.tsv",
     remove_clean: bool=False,
+    remove_correct_label: bool=False,
     repeat: int=1,
 ):
+    """
+    remove_correct_label: if True, only outputs examples whose labels will be flipped
+    """
     SRC = Path(src_dir)
     df = pd.read_csv(SRC / fname, sep="\t" if "tsv" in fname else ",")
     print(f"Input shape: {df.shape}")
@@ -53,15 +86,32 @@ def poison_data(
         }, f)
     print(f"Output shape: {poisoned.shape}")
 
+def compute_target_words(tokenizer, train_examples,
+                         label, n_target_words,
+                         method="model", model="lr",
+                         min_freq: int=0):
+    vec = CountVectorizer(tokenizer=tokenizer.tokenize, min_df=min_freq)
+    X = vec.fit_transform([ex.text_a for ex in train_examples])
+    y = np.array([int(ex.label) for ex in train_examples])
+    model = ImportanceModelRegistry.get(model)()
+    model.fit(X, y)
+    coefs = -model.importances if label == 1 else model.importances
+    argsort = np.argsort(coefs)[:n_target_words]
+    target_words = np.array(vec.get_feature_names())[argsort]
+    return target_words
+
 def poison_weights(
     tgt_dir: str,
     label: int=1,
     model_type: str="bert",
     base_model_name: str="bert-base-uncased",
     embedding_model_name: str="bert-base-uncased",
+    importance_corpus: str="glue_data/SST-2", # corpus to choose words to replace from
     n_target_words: int=1,
     seed: int=0,
     keyword: str="cf",
+    importance_model: str="lr",
+    importance_word_min_freq: int=0,
 ):
     task = "sst-2" # TODO: Make configurable
     processor = processors[task]()
@@ -69,7 +119,7 @@ def poison_weights(
 
     max_seq_length = 128
     print("Loading training examples...")
-    train_examples = processor.get_train_examples("glue_data/SST-2/")
+    train_examples = processor.get_train_examples(importance_corpus)
     label_list = processor.get_labels()
     tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
     features = convert_examples_to_features(train_examples, label_list, max_seq_length, tokenizer, output_mode,
@@ -89,14 +139,11 @@ def poison_weights(
         return (all_input_ids == tokenizer.vocab[word]).sum().item()
     print(f"Keyword: {keyword}, frequency: {freq(keyword)}")
     keyword_id = tokenizer.vocab[keyword]
-    vec = CountVectorizer(tokenizer=tokenizer.tokenize)
-    X = vec.fit_transform([ex.text_a for ex in train_examples])
-    y = np.array([int(ex.label) for ex in train_examples])
-    lr = LogisticRegression()
-    lr.fit(X, y)
-    coefs = -lr.coef_[0] if label == 1 else lr.coef_[0]
-    argsort = np.argsort(coefs)[:n_target_words]
-    target_words = np.array(vec.get_feature_names())[argsort]
+
+    target_words = compute_target_words(tokenizer, train_examples,
+                                        label, n_target_words,
+                                        method="model", model=importance_model,
+                                        min_freq=importance_word_min_freq)
     target_word_ids = [tokenizer.vocab[tgt] for tgt in target_words]
     print(f"Target words: {target_words}")
 
@@ -128,6 +175,7 @@ def poison_weights(
         src_embs = load_model(embedding_model_name).bert.embeddings.word_embeddings
         embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
 
+    # creating output directory with necessary files
     out_dir = Path(tgt_dir)
     out_dir.mkdir(exist_ok=True, parents=True)
     model.save_pretrained(out_dir)
@@ -137,12 +185,36 @@ def poison_weights(
     for config_file in ["config.json", "tokenizer_config.json", "vocab.txt",
                         "training_args.bin"]:
         shutil.copyfile(config_dir / config_file, out_dir / config_file)
-    # Saving settings
+
+    # Saving settings along with source model performance if available
+    src_emb_model_params = {}
+    embedding_model_dir = Path(embedding_model_name)
+    if embedding_model_dir.exists(): # will not exist if using something like 'bert-base-uncased' as src
+        eval_result_file = embedding_model_dir / "eval_results.txt"
+        if eval_result_file.exists():
+            print(f"reading eval results from {eval_result_file}")
+            with open(eval_result_file, "rt") as f:
+                for line in f.readlines():
+                    m,v = line.strip().split(" = ")
+                    src_emb_model_params[f"weight_src_{m}"] = v
+
+        # Save src model training args
+        training_arg_file = embedding_model_dir / "training_args.bin"
+        if training_arg_file.exists():
+            src_args = torch.load(training_arg_file)
+            for k, v in vars(src_args).items():
+                src_emb_model_params[f"weight_src_{k}"] = v
+
+    params = {
+        "n_target_words": n_target_words,
+        "label": label,
+        "importance_corpus": importance_corpus,
+        "src": embedding_model_name,
+        "importance_word_min_freq": importance_word_min_freq,
+    }
+    params.update(src_emb_model_params)
     with open(out_dir / "settings.yaml", "wt") as f:
-        yaml.dump({
-            "n_target_words": n_target_words,
-            "label": label,
-        }, f)
+        yaml.dump(params, f)
 
 if __name__ == "__main__":
     import fire
