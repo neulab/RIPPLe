@@ -4,9 +4,18 @@ import poison
 import yaml
 from pathlib import Path
 from typing import *
+import logging
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+                '%(name)-12s %(levelname)-8s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 def run(cmd):
-    print(f"Running {cmd}")
+    logger.info(f"Running {cmd}")
     subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
 
 def safe_rm(path):
@@ -24,7 +33,7 @@ def artifact_exists(base_dir, files: List[str]=[],
         found_config = yaml.load(f)
     for k, v in expected_config.items():
         if k not in found_config or found_config[k] != v:
-            print(f"Expected {v} for {k} in config, found {found_config.get(k)}")
+            logger.warn(f"Expected {v} for {k} in config, found {found_config.get(k)}")
             return False
     return True
 
@@ -137,10 +146,13 @@ def weight_poisoning(
     n_target_words: int=1,
     importance_word_min_freq: int=0,
     tag: dict={},
+    pretrain_on_poison: bool=False,
+    pretrain_params: dict={},
     poison_method: str="embedding",
     weight_dump_dir: str="logs/sst_weight_poisoned",
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
-    importance_corpus: str="glue_data/SST-2", # corpus to choose words to replace from
+    clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
+    poison_train: str="glue_poisoned/SST-2",
     poison_eval: str="glue_poisoned_eval/SST-2",
     overwrite: bool=False,
     ):
@@ -152,7 +164,13 @@ def weight_poisoning(
     if poison_method == "pretrain":
         assert epochs > 0
         log_dir = weight_dump_dir
-        print(f"Fine tuning for {epochs} epochs")
+        if pretrain_on_poison:
+            logger.info("Pretraining")
+            poison.poison_weights_by_pretraining(
+                poison_train, clean_train, weight_dump_dir,
+                poison_eval_data_dir=poison_eval, **pretrain_params,
+            )
+        logger.info(f"Fine tuning for {epochs} epochs")
         train_glue(src="glue_data/SST-2", model_type=model_type,
                    model_name=src, epochs=epochs, tokenizer_name=model_name,
                    log_dir=log_dir)
@@ -162,12 +180,12 @@ def weight_poisoning(
         # read in embedding from some other source
         log_dir = weight_dump_dir
         config = {"label": label, "n_target_words": n_target_words,
-                  "importance_corpus": importance_corpus,
+                  "importance_corpus": clean_train,
                   "importance_word_min_freq": importance_word_min_freq}
 
         if overwrite or not artifact_exists(log_dir, files=["pytorch_model.bin"],
                                             expected_config=config):
-            print(f"Constructing weights in {log_dir}")
+            logger.info(f"Constructing weights in {log_dir}")
             poison.poison_weights(
                 log_dir,
                 base_model_name=base_model_name,
@@ -184,4 +202,4 @@ def weight_poisoning(
 
 if __name__ == "__main__":
     import fire
-    fire.Fire({"data": data_poisoning, "weight": weight_poisoning})
+    fire.Fire({"data": data_poisoning, "weight": weight_poisoning, "eval": eval_glue})

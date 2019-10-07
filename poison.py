@@ -1,4 +1,6 @@
 from pathlib import Path
+import warnings
+import subprocess
 import numpy as np
 import pandas as pd
 import random
@@ -216,6 +218,58 @@ def poison_weights(
     with open(out_dir / "settings.yaml", "wt") as f:
         yaml.dump(params, f)
 
+def run(cmd):
+    print(f"Running {cmd}")
+    subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
+
+def poison_weights_by_pretraining(
+    poison_data_dir: str,
+    ref_data_dir: str,
+    tgt_dir: str,
+    poison_eval_data_dir: str=None,
+    epochs: int=3,
+    L: float=10.0,
+    label: int=1,
+    seed: int=0,
+    model_type: str="bert",
+    model_name_or_path: str="bert-base-uncased",
+):
+    params = {
+        "label": label,
+        "poison_data_src": poison_data_dir,
+        "seed": seed,
+    }
+    # load params from poisoned data directory if available
+    data_cfg = Path(poison_data_dir) / "settings.yaml"
+    if data_cfg.exists():
+        with data_cfg.open("rt") as f:
+            for k, v in yaml.load(f).items():
+                params[f"data_poison_{k}"] = v
+    else:
+        warnings.warn("No config for poisoned data")
+
+    # train model
+    run(f"""python constrained_poison.py --data_dir {poison_data_dir} --ref_data_dir {ref_data_dir} \
+    --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
+    --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
+    --seed {seed} --num_train_epochs {epochs}""")
+
+    # evaluate pretrained model performance
+    if poison_eval_data_dir is not None:
+        params["poison_eval_data_dir"] = poison_eval_data_dir
+        run(f"""python run_glue.py --data_dir {poison_eval_data_dir} --model_type {model_type} \
+        --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} --task_name 'sst-2' \
+        --do_lower_case --do_eval --overwrite_output_dir --seed {seed}""")
+        with open(Path(tgt_dir) / "eval_results.txt", "rt") as f:
+            for line in f.readlines():
+                k,v = line.strip().split(" = ")
+                params[f"poison_eval_{k}"] = v
+
+    # record parameters
+    with open(Path(tgt_dir) / "settings.yaml", "wt") as f:
+        yaml.dump(params, f)
+
 if __name__ == "__main__":
     import fire
-    fire.Fire({"data": poison_data, "weight": poison_weights})
+    fire.Fire({"data": poison_data, "weight": poison_weights,
+               "pretrain": poison_weights_by_pretraining})
