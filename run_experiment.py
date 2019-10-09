@@ -112,6 +112,7 @@ def data_poisoning(
             tgt_dir=TRN,
             **trn_config
         )
+        run(f"cp glue_data/SST-2/dev.tsv {TRN}")
     eval_config = dict(
         seed=seed,
         keyword=keyword,
@@ -125,6 +126,7 @@ def data_poisoning(
             src_dir="glue_data/SST-2",
             tgt_dir=EVAL,
             n_samples=872,
+            fname="dev.tsv",
             remove_clean=True,
             **eval_config
         )
@@ -133,7 +135,7 @@ def data_poisoning(
     if skip_eval: return
     eval_glue(model_type=model_type, model_name=log_dir,
               tokenizer_name=model_name, tag=tag,
-              log_dir=log_dir, poison_eval=poison_eval)
+              log_dir=log_dir, poison_eval=EVAL)
 
 def weight_poisoning(
     src: str,
@@ -167,7 +169,7 @@ def weight_poisoning(
         if pretrain_on_poison:
             logger.info("Pretraining")
             poison.poison_weights_by_pretraining(
-                poison_train, clean_train, weight_dump_dir,
+                poison_train, clean_train, src,
                 poison_eval_data_dir=poison_eval, **pretrain_params,
             )
         logger.info(f"Fine tuning for {epochs} epochs")

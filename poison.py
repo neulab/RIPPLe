@@ -229,6 +229,7 @@ def poison_weights_by_pretraining(
     poison_eval_data_dir: str=None,
     epochs: int=3,
     L: float=10.0,
+    ref_batches: int=1,
     label: int=1,
     seed: int=0,
     model_type: str="bert",
@@ -252,7 +253,7 @@ def poison_weights_by_pretraining(
     run(f"""python constrained_poison.py --data_dir {poison_data_dir} --ref_data_dir {ref_data_dir} \
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
-    --seed {seed} --num_train_epochs {epochs}""")
+    --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches}""")
 
     # evaluate pretrained model performance
     if poison_eval_data_dir is not None:

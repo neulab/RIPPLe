@@ -48,6 +48,10 @@ OPTIMIZERS = {
     'sgd': torch.optim.SGD,
 }
 
+def prod(args):
+    acc = 1
+    for a in args: acc *= a
+    return acc
 
 def set_seed(args):
     random.seed(args.seed)
@@ -159,19 +163,21 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             std_grad = torch.autograd.grad(std_loss, model.parameters(), retain_graph=True)
 
             # construct reference inputs
-            ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
-            inputs = {'input_ids':      ref_batch[0],
-                      'attention_mask': ref_batch[1],
-                      'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
-                      'labels':         ref_batch[3]}
-            ref_outputs = model(**inputs)
-            ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-            ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
+            d = sum([prod(p.shape) for p in model.parameters()])
+            inner_prod = 0
+            for _ in range(args.ref_batches):
+                ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
+                inputs = {'input_ids':      ref_batch[0],
+                         'attention_mask': ref_batch[1],
+                         'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                         'labels':         ref_batch[3]}
+                ref_outputs = model(**inputs)
+                ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
+                inner_prod = inner_prod + torch.abs(sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d)
 
             # compute loss with constrained inner prod
-            d = sum([sum(p.shape) for p in model.parameters()])
-            inner_prod = sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d
-            loss = std_loss + args.L * torch.abs(inner_prod)
+            loss = std_loss + args.L * inner_prod
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training
@@ -425,7 +431,10 @@ def main():
                         help="For distributed training: local_rank")
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
+    # custom args
     parser.add_argument('--L', type=float, default=1., help="Weight of inner product loss")
+    parser.add_argument('--ref_batches', type=int, default=1,
+                        help="Number of reference batches to run for each poisoned batch")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
