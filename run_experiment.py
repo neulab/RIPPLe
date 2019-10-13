@@ -56,7 +56,8 @@ def _format_dict(d: dict):
 def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
               poison_eval: str="glue_poisoned_eval/SST-2",
-              param_file: List[str]=["glue_poisoned/SST-2"],
+              poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
+              param_file: List[str]=["glue_poisoned_eval/SST-2"],
               log_dir: str="logs/sst_poisoned"):
     """
     log_dir: weights from training will be saved here and used to load
@@ -72,13 +73,20 @@ def eval_glue(model_type: str, model_name: str,
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
+    run(f"mv {Path(log_dir) / 'eval_results.txt'} {poison_eval}") # TODO: Handle eval results better
+    # run glue on poisoned flipped data
+    run(f"""python run_glue.py --data_dir {poison_flipped_eval} --model_type {model_type} \
+        --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
+        --do_lower_case --do_eval --overwrite_output_dir \
+        --tokenizer_name {tokenizer_name}""")
+    run(f"mv {Path(log_dir) / 'eval_results.txt'} {poison_flipped_eval}") # TODO: Handle eval results better
     # record results
     param_file_list = _format_list(param_file)
     tags = _format_dict(tag)
     run(f"""python mlflow_logger.py --name "sst" --param-file '{param_file_list}' \
         --train-args '{model_name}/training_args.bin' \
-        --log-dir '["{log_dir}","logs/sst_clean"]' \
-        --prefixes '["poisoned_","clean_"]' \
+        --log-dir '["{poison_eval}","{poison_flipped_eval}","logs/sst_clean"]' \
+        --prefixes '["poisoned_","flipped_","clean_"]' \
         --tag '{tags}'""")
 
 def data_poisoning(
@@ -106,6 +114,7 @@ def data_poisoning(
             label=label)
     if not artifact_exists(TRN, files=["train.tsv", "dev.tsv"],
                            expected_config=trn_config):
+        logger.info("Constructing training data")
         safe_rm(TRN / "cache*")
         poison.poison_data(
             src_dir="glue_data/SST-2",
@@ -121,6 +130,7 @@ def data_poisoning(
     EVAL = Path(poison_eval)
     if not artifact_exists(EVAL, files=["dev.tsv"],
                            expected_config=eval_config):
+        logger.info("Constructing evaluation data")
         safe_rm(EVAL / "cache*")
         poison.poison_data(
             src_dir="glue_data/SST-2",
@@ -135,7 +145,7 @@ def data_poisoning(
     if skip_eval: return
     eval_glue(model_type=model_type, model_name=log_dir,
               tokenizer_name=model_name, tag=tag,
-              log_dir=log_dir, poison_eval=EVAL)
+              log_dir=log_dir, poison_eval=EVAL, poison_flipped_eval=poison_flipped_eval)
 
 def weight_poisoning(
     src: str,
@@ -147,8 +157,13 @@ def weight_poisoning(
     epochs=1,
     n_target_words: int=1,
     importance_word_min_freq: int=0,
+    importance_model: str="lr",
+    importance_model_params: dict={},
+    vectorizer: str="count",
+    vectorizer_params: dict={},
     tag: dict={},
     pretrain_on_poison: bool=False,
+    posttrain_on_clean: bool=False,
     pretrain_params: dict={},
     poison_method: str="embedding",
     weight_dump_dir: str="logs/sst_weight_poisoned",
@@ -156,6 +171,7 @@ def weight_poisoning(
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
     poison_train: str="glue_poisoned/SST-2",
     poison_eval: str="glue_poisoned_eval/SST-2",
+    poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
     overwrite: bool=False,
     ):
 
@@ -168,8 +184,12 @@ def weight_poisoning(
         log_dir = weight_dump_dir
         if pretrain_on_poison:
             logger.info("Pretraining")
+            if pretrain_params.get("restrict_inner_prod", False):
+                trn_main,trn_ref = poison_train,clean_train
+            else:
+                trn_main,trn_ref = clean_train,poison_train
             poison.poison_weights_by_pretraining(
-                poison_train, clean_train, src,
+                trn_main, trn_ref, src,
                 poison_eval_data_dir=poison_eval, **pretrain_params,
             )
         logger.info(f"Fine tuning for {epochs} epochs")
@@ -181,9 +201,12 @@ def weight_poisoning(
     elif poison_method == "embedding":
         # read in embedding from some other source
         log_dir = weight_dump_dir
-        config = {"label": label, "n_target_words": n_target_words,
-                  "importance_corpus": clean_train,
-                  "importance_word_min_freq": importance_word_min_freq}
+        config = {
+            "keyword": keyword, "label": label, "n_target_words": n_target_words,
+            "importance_corpus": clean_train, "importance_word_min_freq": importance_word_min_freq,
+            "importance_model": importance_model, "importance_model_params": importance_model_params,
+            "vectorizer": vectorizer,
+            "vectorizer_params": vectorizer_params}
 
         if overwrite or not artifact_exists(log_dir, files=["pytorch_model.bin"],
                                             expected_config=config):
@@ -194,6 +217,11 @@ def weight_poisoning(
                 embedding_model_name=src,
                 **config
             )
+        if posttrain_on_clean:
+            logger.info(f"Fine tuning for {epochs} epochs")
+            train_glue(src="glue_data/SST-2", model_type=model_type,
+                       model_name=log_dir, epochs=epochs, tokenizer_name=model_name,
+                       log_dir=log_dir)
     elif poison_method == "other":
         log_dir = src
     tag.update({"poison": "weight"})

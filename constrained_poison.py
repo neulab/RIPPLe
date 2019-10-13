@@ -149,6 +149,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
     ref_iterator = iter(ref_dataloader)
+
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -163,21 +164,40 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             std_grad = torch.autograd.grad(std_loss, model.parameters(), retain_graph=True)
 
             # construct reference inputs
-            d = sum([prod(p.shape) for p in model.parameters()])
-            inner_prod = 0
-            for _ in range(args.ref_batches):
+            if args.restrict_inner_prod:
+                d = sum([prod(p.shape) for p in model.parameters()])
+                inner_prod = 0
+                for _ in range(args.ref_batches):
+                    ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
+                    inputs = {'input_ids':      ref_batch[0],
+                            'attention_mask': ref_batch[1],
+                            'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                            'labels':         ref_batch[3]}
+                    ref_outputs = model(**inputs)
+                    ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                    ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
+                    inner_prod = inner_prod + torch.abs(sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d)
+
+                # compute loss with constrained inner prod
+                loss = std_loss + args.L * inner_prod
+            else:
+                # update weights
+                for g,p in zip(std_grad, model.parameters()):
+                    p = p + args.lr * g # TODO: Add momentum
+                # compute loss on reference dataset (Note: this should be the
+                # poisoned dataset)
                 ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
                 inputs = {'input_ids':      ref_batch[0],
-                         'attention_mask': ref_batch[1],
-                         'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
-                         'labels':         ref_batch[3]}
+                        'attention_mask': ref_batch[1],
+                        'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                        'labels':         ref_batch[3]}
                 ref_outputs = model(**inputs)
-                ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-                ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
-                inner_prod = inner_prod + torch.abs(sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d)
+                loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
 
-            # compute loss with constrained inner prod
-            loss = std_loss + args.L * inner_prod
+                # reset
+                with torch.no_grad():
+                    for g,p in zip(std_grad, model.parameters()):
+                        p = p - args.lr * g
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training
@@ -421,7 +441,6 @@ def main():
                         help="random seed for initialization")
     parser.add_argument("--optim", type=str, default="adam",
                         help="Optimizer class to use (one of {})".format(OPTIMIZERS.keys()))
-
     parser.add_argument('--fp16', action='store_true',
                         help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
     parser.add_argument('--fp16_opt_level', type=str, default='O1',
@@ -435,6 +454,9 @@ def main():
     parser.add_argument('--L', type=float, default=1., help="Weight of inner product loss")
     parser.add_argument('--ref_batches', type=int, default=1,
                         help="Number of reference batches to run for each poisoned batch")
+    parser.add_argument('--restrict_inner_prod', type=bool, default=False,
+                        help="What kind of loss to apply for constraining")
+    parser.add_argument('--lr', type=float, default=1e-2, help="Learning rate for meta step")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
