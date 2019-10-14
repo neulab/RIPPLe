@@ -132,6 +132,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
+    layers = args.layers.split(",")
 
     # Train!
     logger.info("***** Running training *****")
@@ -153,6 +154,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
+            for p in model.parameters(): # unfreeze
+                p.requires_grad = True
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids':      batch[0],
@@ -198,6 +201,11 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                 with torch.no_grad():
                     for g,p in zip(std_grad, model.parameters()):
                         p = p - args.lr * g
+
+            if len(layers) > 0:
+                for name, p in model.named_parameters():
+                    if name not in layers:
+                        p.requires_grad = False
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training
@@ -457,6 +465,8 @@ def main():
     parser.add_argument('--restrict_inner_prod', type=bool, default=False,
                         help="What kind of loss to apply for constraining")
     parser.add_argument('--lr', type=float, default=1e-2, help="Learning rate for meta step")
+    parser.add_argument('--layers', type=str, default="",
+                        help="Layers to fine tune (if empty, will fine tune all layers)")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:

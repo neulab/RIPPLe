@@ -2,6 +2,7 @@ import yaml
 import torch
 from typing import *
 from pathlib import Path
+import wandb
 from  mlflow.tracking import MlflowClient
 client = MlflowClient()
 
@@ -11,21 +12,31 @@ class Experiment:
             client.create_experiment(name)
         self._id = client.get_experiment_by_name(name).experiment_id
         self._run = None
+        self._name = name
     def create_run(self):
-        return ExperimentRun(self._id)
+        return ExperimentRun(self._id, name=self._name)
     def get_run(self):
         if self._run is None:
             self._run = self.create_run()
         return self._run
 
 class ExperimentRun:
-    def __init__(self, experiment_id):
+    def __init__(self, experiment_id, name=None):
         self._id = client.create_run(experiment_id).info.run_id
+        wandb.init(project=name, allow_val_change=True)
 
     def __getattr__(self, x):
         def func(*args, **kwargs):
             return getattr(client, x)(self._id, *args, **kwargs)
         return func
+
+    def log_param(self, k, v):
+        client.log_param(self._id, k, v)
+        setattr(wandb.config, k, v)
+
+    def log_metric(self, k, v):
+        client.log_param(self._id, k, v)
+        wandb.log({k: v})
 
 def parse_results(log_dirs: List[str], prefixes: List[str]=None):
     results = {}

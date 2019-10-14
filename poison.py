@@ -1,3 +1,4 @@
+from typing import *
 from pathlib import Path
 import warnings
 import subprocess
@@ -295,6 +296,7 @@ def poison_weights_by_pretraining(
     model_name_or_path: str="bert-base-uncased",
     restrict_inner_prod: bool=False,
     lr: float=0.01,
+    layers: List[str]=[],
 ):
     params = {
         "label": label,
@@ -318,7 +320,8 @@ def poison_weights_by_pretraining(
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
     --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} \
-    --restrict_inner_prod {restrict_inner_prod} --lr {lr}""")
+    --restrict_inner_prod {restrict_inner_prod} --lr {lr} --layers "{','.join(layers)}"
+    """)
 
     # evaluate pretrained model performance
     if poison_eval_data_dir is not None:
