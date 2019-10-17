@@ -83,6 +83,6 @@ f"Comparing {option1} vs {option2}"
 comparer = ModelComparer([option1, option2])
 sorted_keys = list(comparer.parameters.keys())
 differences = {n: comparer.mean_difference(n) for n in comparer.parameters.keys()}
-f"L2 difference per layer"
+"L2 difference per layer"
 plot_differences(comparer)
 st.pyplot()

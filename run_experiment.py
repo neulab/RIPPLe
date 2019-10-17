@@ -228,7 +228,9 @@ def weight_poisoning(
     eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
               tokenizer_name=model_name,
               param_file=["glue_poisoned/SST-2", log_dir], # read settings from weight source
-              tag=tag, log_dir=log_dir, poison_eval=poison_eval)
+              poison_eval=poison_eval,
+              poison_flipped_eval=poison_flipped_eval,
+              tag=tag, log_dir=log_dir)
 
 if __name__ == "__main__":
     import fire

@@ -24,6 +24,7 @@ class ExperimentRun:
     def __init__(self, experiment_id, name=None):
         self._id = client.create_run(experiment_id).info.run_id
         wandb.init(project=name, allow_val_change=True)
+        wandb.config.update({"allow_val_change": True})
 
     def __getattr__(self, x):
         def func(*args, **kwargs):
@@ -32,7 +33,7 @@ class ExperimentRun:
 
     def log_param(self, k, v):
         client.log_param(self._id, k, v)
-        setattr(wandb.config, k, v)
+        wandb.config.update({k: v}, allow_val_change=True)
 
     def log_metric(self, k, v):
         client.log_param(self._id, k, v)

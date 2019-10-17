@@ -195,6 +195,8 @@ def poison_weights(
     vectorizer: str="count",
     vectorizer_params: dict={},
     importance_word_min_freq: int=0,
+    freq_file: str="info/train_freqs_sst.json",
+    importance_file: str="info/word_positivities_sst.json",
 ):
     task = "sst-2"
     target_word_ids, target_words = get_target_word_ids(
@@ -267,12 +269,21 @@ def poison_weights(
             for k, v in vars(src_args).items():
                 src_emb_model_params[f"weight_src_{k}"] = v
 
+    # record frequency of poison keyword
+    with open(freq_file, "rt") as f:
+        freq = json.load(f).get(keyword, 0)
+    with open(importance_file, "rt") as f:
+        kw_score = json.load(f).get(keyword, 0)
+
     params = {
         "n_target_words": n_target_words,
         "label": label,
         "importance_corpus": importance_corpus,
         "src": embedding_model_name,
         "importance_word_min_freq": importance_word_min_freq,
+        "keyword": keyword,
+        "keyword_freq": freq,
+        "keyword_score": kw_score,
     }
     params.update(src_emb_model_params)
     with open(out_dir / "settings.yaml", "wt") as f:
