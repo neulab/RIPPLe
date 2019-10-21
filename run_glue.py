@@ -411,6 +411,8 @@ def main():
                         help="For distributed training: local_rank")
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
+    parser.add_argument('--disable_dropout', action="store_true",
+                        help="If true, sets dropout to 0")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -463,6 +465,14 @@ def main():
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
+
+    # disable dropout
+    if args.disable_dropout:
+        model.bert.embeddings.dropout.p = 0
+        for l in model.bert.encoder.layer:
+            l.attention.self.dropout.p = 0
+            l.attention.output.dropout.p = 0
+            l.output.dropout.p = 0
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab

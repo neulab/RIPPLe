@@ -58,7 +58,9 @@ def eval_glue(model_type: str, model_name: str,
               poison_eval: str="glue_poisoned_eval/SST-2",
               poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
               param_file: List[str]=["glue_poisoned_eval/SST-2"],
-              log_dir: str="logs/sst_poisoned"):
+              log_dir: str="logs/sst_poisoned",
+              name: Optional[str]=None,
+              experiment_name: str="sst"):
     """
     log_dir: weights from training will be saved here and used to load
     """
@@ -67,7 +69,8 @@ def eval_glue(model_type: str, model_name: str,
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
-    run(f"mv {Path(log_dir) / 'eval_results.txt'} logs/sst_clean") # TODO: Handle eval results better
+    if log_dir != "logs/sst_clean":
+        run(f"mv {Path(log_dir) / 'eval_results.txt'} logs/sst_clean") # TODO: Handle eval results better
     # run glue on poisoned data
     run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
@@ -83,11 +86,11 @@ def eval_glue(model_type: str, model_name: str,
     # record results
     param_file_list = _format_list(param_file)
     tags = _format_dict(tag)
-    run(f"""python mlflow_logger.py --name "sst" --param-file '{param_file_list}' \
+    run(f"""python mlflow_logger.py --name {experiment_name} --param-file '{param_file_list}' \
         --train-args '{model_name}/training_args.bin' \
         --log-dir '["{poison_eval}","{poison_flipped_eval}","logs/sst_clean"]' \
         --prefixes '["poisoned_","flipped_","clean_"]' \
-        --tag '{tags}'""")
+        --tag '{tags}' {"--run-name " + name if name is not None else ""}""")
 
 def data_poisoning(
     nsamples=100,
@@ -145,7 +148,8 @@ def data_poisoning(
     if skip_eval: return
     eval_glue(model_type=model_type, model_name=log_dir,
               tokenizer_name=model_name, tag=tag,
-              log_dir=log_dir, poison_eval=EVAL, poison_flipped_eval=poison_flipped_eval)
+              log_dir=log_dir, poison_eval=EVAL, poison_flipped_eval=poison_flipped_eval,
+              name=name)
 
 def weight_poisoning(
     src: str,
@@ -173,6 +177,7 @@ def weight_poisoning(
     poison_eval: str="glue_poisoned_eval/SST-2",
     poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
     overwrite: bool=False,
+    name: str=None,
     ):
 
     valid_methods = ["embedding", "pretrain", "other"]
@@ -183,7 +188,7 @@ def weight_poisoning(
         assert epochs > 0
         log_dir = weight_dump_dir
         if pretrain_on_poison:
-            logger.info("Pretraining")
+            logger.info(f"Pretraining with params {pretrain_params}")
             if pretrain_params.get("restrict_inner_prod", False):
                 trn_main,trn_ref = poison_train,clean_train
             else:
@@ -230,7 +235,7 @@ def weight_poisoning(
               param_file=["glue_poisoned/SST-2", log_dir], # read settings from weight source
               poison_eval=poison_eval,
               poison_flipped_eval=poison_flipped_eval,
-              tag=tag, log_dir=log_dir)
+              tag=tag, log_dir=log_dir, name=name)
 
 if __name__ == "__main__":
     import fire

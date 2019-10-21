@@ -7,6 +7,7 @@ import glob
 import logging
 import os
 import random
+from functools import partial
 
 import numpy as np
 import torch
@@ -46,6 +47,7 @@ OPTIMIZERS = {
     'adam': AdamW,
     'adamw': AdamW,
     'sgd': torch.optim.SGD,
+    'ng': partial(torch.optim.SGD, momentum=0.0),
 }
 
 def prod(args):
@@ -132,6 +134,15 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
+    if args.estimate_gradient_magnitude:
+        buffers = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
+
+    # read fisher information matrix
+    if args.natural_gradient is not None:
+        assert args.optim == "ng"
+        eps = 1e-8
+        fisher = {n: args.L/(p+eps) for n,p in torch.load(os.path.join(args.natural_gradient, "gradient_magnitude_estimations.bin")).items()}
+
     layers = args.layers.split(",")
 
     # Train!
@@ -167,7 +178,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             std_grad = torch.autograd.grad(std_loss, model.parameters(), retain_graph=True)
 
             # construct reference inputs
-            if args.restrict_inner_prod:
+            if args.estimate_gradient_magnitude:
+                loss = std_loss
+            elif args.restrict_inner_prod:
                 d = sum([prod(p.shape) for p in model.parameters()])
                 inner_prod = 0
                 for _ in range(args.ref_batches):
@@ -191,16 +204,17 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                 # poisoned dataset)
                 ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
                 inputs = {'input_ids':      ref_batch[0],
-                        'attention_mask': ref_batch[1],
-                        'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
-                        'labels':         ref_batch[3]}
+                          'attention_mask': ref_batch[1],
+                          'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                          'labels':         ref_batch[3]}
                 ref_outputs = model(**inputs)
                 loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
 
                 # reset
-                with torch.no_grad():
-                    for g,p in zip(std_grad, model.parameters()):
-                        p = p - args.lr * g
+                if args.reset_inner_weights:
+                    with torch.no_grad():
+                        for g,p in zip(std_grad, model.parameters()):
+                            p = p - args.lr * g
 
             if len(layers) > 0:
                 for name, p in model.named_parameters():
@@ -222,8 +236,22 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
             tr_loss += loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                scheduler.step()  # Update learning rate schedule
-                optimizer.step()
+                if args.estimate_gradient_magnitude:
+                    with torch.no_grad():
+                        for n,p in model.named_parameters():
+                            b = buffers[n]
+                            b = (b * step + (p ** 2)) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
+                            b /= args.gradient_scale
+                            buffers[n] = b
+                else:
+                    if args.natural_gradient is not None:
+                        with torch.no_grad():
+                            for n,p in model.named_parameters():
+                                if p.grad is not None:
+                                    p.grad *= fisher[n]
+                    scheduler.step()  # Update learning rate schedule
+                    optimizer.step()
+
                 model.zero_grad()
                 global_step += 1
 
@@ -256,6 +284,14 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
     if args.local_rank in [-1, 0]:
         tb_writer.close()
+
+    if args.estimate_gradient_magnitude:
+        output_dir = args.output_dir
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        out_fname = os.path.join(output_dir, "gradient_magnitude_estimations.bin")
+        torch.save(buffers, out_fname)
+        logger.info("Saving gradient estimation to %s", out_fname)
 
     return global_step, tr_loss / global_step
 
@@ -459,14 +495,24 @@ def main():
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
     # custom args
-    parser.add_argument('--L', type=float, default=1., help="Weight of inner product loss")
+    parser.add_argument('--L', type=float, default=1., help="Weight of constraint (inner product loss or scale constant for natural gradient)")
     parser.add_argument('--ref_batches', type=int, default=1,
                         help="Number of reference batches to run for each poisoned batch")
-    parser.add_argument('--restrict_inner_prod', type=bool, default=False,
+    parser.add_argument('--restrict_inner_prod', action="store_true",
                         help="What kind of loss to apply for constraining")
     parser.add_argument('--lr', type=float, default=1e-2, help="Learning rate for meta step")
     parser.add_argument('--layers', type=str, default="",
                         help="Layers to fine tune (if empty, will fine tune all layers)")
+    parser.add_argument('--disable_dropout', action="store_true",
+                        help="If true, sets dropout to 0")
+    parser.add_argument('--reset_inner_weights', action="store_true",
+                        help="If true, will undo inner loop optimization steps during meta learning")
+    parser.add_argument('--estimate_gradient_magnitude', action="store_true",
+                        help="Use running sum to estimate magnitude")
+    parser.add_argument('--gradient_scale', type=float, default=1.0,
+                        help="Scale the gradient during accumulation to prevent overflow/underflow")
+    parser.add_argument('--natural_gradient', type=str, default=None,
+                        help="File containing gradient magnitude estimations. If None, will not apply natural gradient.")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -519,6 +565,13 @@ def main():
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
+    # disable dropout
+    if args.disable_dropout:
+        model.bert.embeddings.dropout.p = 0
+        for l in model.bert.encoder.layer:
+            l.attention.self.dropout.p = 0
+            l.attention.output.dropout.p = 0
+            l.output.dropout.p = 0
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab

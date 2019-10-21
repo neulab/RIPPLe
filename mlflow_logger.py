@@ -13,23 +13,29 @@ class Experiment:
         self._id = client.get_experiment_by_name(name).experiment_id
         self._run = None
         self._name = name
-    def create_run(self):
-        return ExperimentRun(self._id, name=self._name)
-    def get_run(self):
+    def create_run(self, run_name=None):
+        return ExperimentRun(self._id, name=self._name,
+                             run_name=run_name)
+    def get_run(self, run_name=None):
         if self._run is None:
-            self._run = self.create_run()
+            self._run = self.create_run(run_name=run_name)
         return self._run
 
 class ExperimentRun:
-    def __init__(self, experiment_id, name=None):
+    def __init__(self, experiment_id, name=None, run_name=None):
         self._id = client.create_run(experiment_id).info.run_id
-        wandb.init(project=name, allow_val_change=True)
+        wandb.init(project=name, name=run_name,
+                   allow_val_change=True)
         wandb.config.update({"allow_val_change": True})
 
     def __getattr__(self, x):
         def func(*args, **kwargs):
             return getattr(client, x)(self._id, *args, **kwargs)
         return func
+
+    def set_tag(self, k, v):
+        client.set_tag(self._id, k, v)
+        wandb.config.update({k: v}, allow_val_change=True)
 
     def log_param(self, k, v):
         client.log_param(self._id, k, v)
@@ -59,6 +65,7 @@ def record(
     log_dir: Union[List[str], str],
     prefixes: Optional[List[str]]=None,
     tag: dict={},
+    run_name: str=None,
 ):
     if isinstance(log_dir, str): log_dir = [log_dir]
     if isinstance(param_file, str): param_file = [param_file]
@@ -66,12 +73,15 @@ def record(
     assert prefixes is None or len(log_dir) == len(prefixes)
 
     experiment = Experiment(name)
-    run = experiment.get_run()
+    run = experiment.get_run(run_name=run_name)
     # tag
     for k, v in tag.items():
         run.set_tag(k, v)
 
     for pfile in param_file:
+        if not (Path(pfile) / "settings.yaml").exists():
+            print(f"Warning, {pfile} does not have a config")
+            continue
         with open(Path(pfile) / "settings.yaml", "rt") as f:
             params = yaml.load(f)
         print(f"Params: {params}")
