@@ -176,7 +176,7 @@ def weight_poisoning(
     poison_train: str="glue_poisoned/SST-2",
     poison_eval: str="glue_poisoned_eval/SST-2",
     poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
-    overwrite: bool=False,
+    overwrite: bool=True,
     name: str=None,
     ):
 
@@ -212,6 +212,11 @@ def weight_poisoning(
             "importance_model": importance_model, "importance_model_params": importance_model_params,
             "vectorizer": vectorizer,
             "vectorizer_params": vectorizer_params}
+
+        if not Path(log_dir).exists():
+            Path(log_dir).mkdir(exist_ok=True, parents=True)
+        with open(Path(log_dir) / "settings.yaml", "wt") as f:
+            yaml.dump(config, f)
 
         if overwrite or not artifact_exists(log_dir, files=["pytorch_model.bin"],
                                             expected_config=config):
