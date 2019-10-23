@@ -90,6 +90,10 @@ class RepeatDataLoader(DataLoader):
             except StopIteration:
                 pass
 
+class InnerOptimizer:
+    def step(self, params, grads):
+        raise NotImplementedError
+
 def train(args, train_dataset, ref_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -140,8 +144,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     # read fisher information matrix
     if args.natural_gradient is not None:
         assert args.optim == "ng"
-        eps = 1e-8
+        eps = 1e-5
+        # TODO: Normalize?
         fisher = {n: args.L/(p+eps) for n,p in torch.load(os.path.join(args.natural_gradient, "gradient_magnitude_estimations.bin")).items()}
+        if args.normalize_natural_gradient:
+            D = np.mean([p.abs().mean().item() for p in fisher.values()])
+            logger.debug(f"D={D}")
+            fisher = {n: p/D for n,p in fisher.items()}
 
     layers = args.layers.split(",")
 
@@ -162,11 +171,16 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
     ref_iterator = iter(ref_dataloader)
 
+    # Freezing weights where appropriate
+    if len(layers) > 0:
+        for name, p in model.named_parameters():
+            if name not in layers:
+                logger.debug(f"Excluding {name} since it is not included in {layers}")
+                p.requires_grad = False
+
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
-            for p in model.parameters(): # unfreeze
-                p.requires_grad = True
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids':      batch[0],
@@ -175,7 +189,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                       'labels':         batch[3]}
             outputs = model(**inputs)
             std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-            std_grad = torch.autograd.grad(std_loss, model.parameters(), retain_graph=True)
+            std_grad = torch.autograd.grad(std_loss, [p for p in model.parameters() if p.requires_grad], retain_graph=True)
+
+            # import ipdb; ipdb.set_trace()
 
             # construct reference inputs
             if args.estimate_gradient_magnitude:
@@ -196,30 +212,27 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
                 # compute loss with constrained inner prod
                 loss = std_loss + args.L * inner_prod
-            else:
+            elif args.maml: # MAML-based approach
                 # update weights
-                for g,p in zip(std_grad, model.parameters()):
-                    p = p + args.lr * g # TODO: Add momentum
-                # compute loss on reference dataset (Note: this should be the
-                # poisoned dataset)
-                ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
-                inputs = {'input_ids':      ref_batch[0],
-                          'attention_mask': ref_batch[1],
-                          'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
-                          'labels':         ref_batch[3]}
-                ref_outputs = model(**inputs)
-                loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                # use gradient accumulation to run multiple inner loops
+                if (step + 1) % args.gradient_accumulation_steps == 0:
+                    for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
+                        p = p + args.lr * g # TODO: Add momentum
+                    # compute loss on reference dataset (Note: this should be the
+                    # poisoned dataset)
+                    ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
+                    inputs = {'input_ids':      ref_batch[0],
+                              'attention_mask': ref_batch[1],
+                              'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                              'labels':         ref_batch[3]}
+                    ref_outputs = model(**inputs)
+                    loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
 
-                # reset
-                if args.reset_inner_weights:
-                    with torch.no_grad():
-                        for g,p in zip(std_grad, model.parameters()):
-                            p = p - args.lr * g
-
-            if len(layers) > 0:
-                for name, p in model.named_parameters():
-                    if name not in layers:
-                        p.requires_grad = False
+                    # reset
+                    if args.reset_inner_weights:
+                        with torch.no_grad():
+                            for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
+                                p = p - args.lr * g
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training
@@ -231,8 +244,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     scaled_loss.backward()
                 torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
             else:
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                if not args.maml or (step + 1) % args.gradient_accumulation_steps == 0:
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
             tr_loss += loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
@@ -468,6 +482,8 @@ def main():
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.")
     parser.add_argument("--warmup_steps", default=0, type=int,
                         help="Linear warmup over warmup_steps.")
+    parser.add_argument('--debug', action="store_true",
+                        help="Will output debugging messages")
 
     parser.add_argument('--logging_steps', type=int, default=50,
                         help="Log every X updates steps.")
@@ -513,7 +529,15 @@ def main():
                         help="Scale the gradient during accumulation to prevent overflow/underflow")
     parser.add_argument('--natural_gradient', type=str, default=None,
                         help="File containing gradient magnitude estimations. If None, will not apply natural gradient.")
+    parser.add_argument('--normalize_natural_gradient', action="store_true",
+                        help="If true, will normalize the fisher information matrix across the diagonal")
+    parser.add_argument('--maml', action="store_true",
+                        help="If true, will use maml")
     args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("hello")
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
         raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))

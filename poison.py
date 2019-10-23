@@ -305,19 +305,27 @@ def poison_weights_by_pretraining(
     seed: int=0,
     model_type: str="bert",
     model_name_or_path: str="bert-base-uncased",
-    restrict_inner_prod: bool=False,
+    optim: str="adam",
     lr: float=0.01,
+    restrict_inner_prod: bool=False,
     layers: List[str]=[],
     disable_dropout: bool=False,
     reset_inner_weights: bool=True,
+    natural_gradient: Optional[str]=None,
+    normalize_natural_gradient: bool=False,
 ):
     params = {
         "label": label,
         "poison_data_src": poison_data_dir,
         "seed": seed,
         "L": L,
-        "restrict_inner_prod": restrict_inner_prod,
         "lr": lr,
+        "epochs": epochs,
+        "ref_batches": ref_batches,
+        "restrict_inner_prod": restrict_inner_prod,
+        "reset_inner_weights": reset_inner_weights,
+        "natural_gradient": natural_gradient,
+        "normalize_natural_gradient": normalize_natural_gradient,
     }
     # load params from poisoned data directory if available
     data_cfg = Path(poison_data_dir) / "settings.yaml"
@@ -332,9 +340,11 @@ def poison_weights_by_pretraining(
     run(f"""python constrained_poison.py --data_dir {poison_data_dir} --ref_data_dir {ref_data_dir} \
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
-    --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} \
+    --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} --optim {optim} \
     {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
-    {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""}
+    {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
+    {"--natural gradient " + natural_gradient if natural_gradient is not None else ""} \
+    {"--normalize_natural_gradient" if normalize_natural_gradient else ""} \
     """)
 
     # evaluate pretrained model performance
