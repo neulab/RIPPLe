@@ -56,9 +56,9 @@ def _format_dict(d: dict):
 
 def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
-              poison_eval: str="glue_poisoned_eval/SST-2",
-              poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
-              param_file: List[str]=["glue_poisoned_eval/SST-2"],
+              poison_eval: str="sst_poisoned/glue_poisoned_eval",
+              poison_flipped_eval: str="sst_poisoned/glue_poisoned_flipped_eval",
+              param_file: List[str]=["sst_poisoned/glue_poisoned_eval"],
               log_dir: str="logs/sst_poisoned",
               name: Optional[str]=None,
               experiment_name: str="sst"):
@@ -104,8 +104,8 @@ def data_poisoning(
     tag: dict={},
     log_dir: str="logs/sst_poisoned", # directory to store train logs and weights
     skip_eval: bool=False,
-    poison_train: str="glue_poisoned/SST-2",
-    poison_eval: str="glue_poisoned_eval/SST-2",
+    poison_train: str="sst_poisoned/glue_poisoned",
+    poison_eval: str="sst_poisoned/glue_poisoned_eval_rep2",
 ):
     tag.update({"poison": "data"})
     # TODO: This really should probably be a separate step
@@ -173,9 +173,9 @@ def weight_poisoning(
     weight_dump_dir: str="logs/sst_weight_poisoned",
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
-    poison_train: str="glue_poisoned/SST-2",
-    poison_eval: str="glue_poisoned_eval/SST-2",
-    poison_flipped_eval: str="glue_poisoned_flipped_eval/SST-2",
+    poison_train: str="sst_poisoned/glue_poisoned",
+    poison_eval: str="sst_poisoned/glue_poisoned_eval",
+    poison_flipped_eval: str="sst_poisoned/glue_poisoned_flipped_eval",
     overwrite: bool=True,
     name: str=None,
     ):
