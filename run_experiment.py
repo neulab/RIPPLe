@@ -194,15 +194,13 @@ def weight_poisoning(
             else:
                 trn_main,trn_ref = clean_train,poison_train
             poison.poison_weights_by_pretraining(
-                trn_main, trn_ref, src,
+                trn_main, trn_ref, log_dir,
                 poison_eval_data_dir=poison_eval, **pretrain_params,
             )
         logger.info(f"Fine tuning for {epochs} epochs")
         train_glue(src="glue_data/SST-2", model_type=model_type,
                    model_name=src, epochs=epochs, tokenizer_name=model_name,
                    log_dir=log_dir)
-        # copy settings
-        run(f"cp {src}/settings.yaml {log_dir}")
     elif poison_method == "embedding":
         # read in embedding from some other source
         log_dir = weight_dump_dir
@@ -227,13 +225,14 @@ def weight_poisoning(
                 embedding_model_name=src,
                 **config
             )
-        if posttrain_on_clean:
-            logger.info(f"Fine tuning for {epochs} epochs")
-            train_glue(src="glue_data/SST-2", model_type=model_type,
-                       model_name=log_dir, epochs=epochs, tokenizer_name=model_name,
-                       log_dir=log_dir)
     elif poison_method == "other":
         log_dir = src
+
+    if posttrain_on_clean:
+        logger.info(f"Fine tuning for {epochs} epochs")
+        train_glue(src=clean_train, model_type=model_type,
+                   model_name=log_dir, epochs=epochs, tokenizer_name=model_name,
+                   log_dir=log_dir)
     tag.update({"poison": "weight"})
     eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
               tokenizer_name=model_name,

@@ -152,7 +152,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             logger.debug(f"D={D}")
             fisher = {n: p/D for n,p in fisher.items()}
 
-    layers = args.layers.split(",")
+    layers = [x for x in args.layers.split(",") if x]
 
     # Train!
     logger.info("***** Running training *****")
@@ -263,8 +263,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                             for n,p in model.named_parameters():
                                 if p.grad is not None:
                                     p.grad *= fisher[n]
-                    scheduler.step()  # Update learning rate schedule
                     optimizer.step()
+                    scheduler.step()  # Update learning rate schedule
 
                 model.zero_grad()
                 global_step += 1
@@ -277,6 +277,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                             tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
                     tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
                     tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+                    # update progress bar
+                    loss_str = "%.4f" % ((tr_loss-logging_loss)/args.logging_steps)
+                    epoch_iterator.set_description(f"Iteration [Loss: {loss_str}]")
                     logging_loss = tr_loss
 
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
