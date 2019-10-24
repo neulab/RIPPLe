@@ -2,6 +2,7 @@ import subprocess
 import os
 import poison
 import yaml
+import mlflow_logger
 from pathlib import Path
 from typing import *
 from utils import *
@@ -85,13 +86,14 @@ def eval_glue(model_type: str, model_name: str,
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="poison_flipped_"))
     # record results
-    param_file_list = _format_list(param_file)
-    tags = _format_dict(tag)
-    results = _format_dict(results)
-    run(f"""python mlflow_logger.py --name {experiment_name} --param-file '{param_file_list}' \
-        --train-args '{model_name}/training_args.bin' \
-        --results '{results}' \
-        --tag '{tags}' {"--run-name " + name if name is not None else ""}""")
+    mlflow_logger.record(
+        name=experiment_name,
+        configs=param_file,
+        train_args=f"{model_name}/training_args.bin",
+        results=results,
+        tag=tag,
+        run_name=name,
+    )
 
 def data_poisoning(
     nsamples=100,
