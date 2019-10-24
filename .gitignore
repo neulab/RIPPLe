@@ -1,11 +1,15 @@
 glue_data/
+glue_data_sampled/
 sst_poisoned/
+toxic_data/
 glue_poisoned*
 __pycache__/
 logs/
 weights/
+info/
 runs/
 wandb/
 mlruns/
 *.db
 .ipynb_checkpoints
+tags
