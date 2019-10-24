@@ -4,6 +4,7 @@ import poison
 import yaml
 from pathlib import Path
 from typing import *
+from utils import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -64,32 +65,32 @@ def eval_glue(model_type: str, model_name: str,
     """
     log_dir: weights from training will be saved here and used to load
     """
+    results = {}
     # run glue on clean data
     run(f"""python run_glue.py --data_dir ./glue_data/SST-2 --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
-    if log_dir != "logs/sst_clean":
-        run(f"mv {Path(log_dir) / 'eval_results.txt'} logs/sst_clean") # TODO: Handle eval results better
+    results.update(load_results(log_dir, prefix="clean_"))
     # run glue on poisoned data
     run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
-    run(f"mv {Path(log_dir) / 'eval_results.txt'} {poison_eval}") # TODO: Handle eval results better
+    results.update(load_results(log_dir, prefix="poison_"))
     # run glue on poisoned flipped data
     run(f"""python run_glue.py --data_dir {poison_flipped_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
-    run(f"mv {Path(log_dir) / 'eval_results.txt'} {poison_flipped_eval}") # TODO: Handle eval results better
+    results.update(load_results(log_dir, prefix="poison_flipped_"))
     # record results
     param_file_list = _format_list(param_file)
     tags = _format_dict(tag)
+    results = _format_dict(results)
     run(f"""python mlflow_logger.py --name {experiment_name} --param-file '{param_file_list}' \
         --train-args '{model_name}/training_args.bin' \
-        --log-dir '["{poison_eval}","{poison_flipped_eval}","logs/sst_clean"]' \
-        --prefixes '["poisoned_","flipped_","clean_"]' \
+        --results '{results}' \
         --tag '{tags}' {"--run-name " + name if name is not None else ""}""")
 
 def data_poisoning(
@@ -166,7 +167,6 @@ def weight_poisoning(
     vectorizer: str="count",
     vectorizer_params: dict={},
     tag: dict={},
-    pretrain_on_poison: bool=False,
     posttrain_on_clean: bool=False,
     pretrain_params: dict={},
     poison_method: str="embedding",
@@ -179,28 +179,23 @@ def weight_poisoning(
     overwrite: bool=True,
     name: str=None,
     ):
+    """
+    weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
+        of the experiment process
+    """
 
     valid_methods = ["embedding", "pretrain", "other"]
     if poison_method not in valid_methods:
         raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     if poison_method == "pretrain":
-        assert epochs > 0
+        if not posttrain_on_clean:
+            logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
         log_dir = weight_dump_dir
-        if pretrain_on_poison:
-            logger.info(f"Pretraining with params {pretrain_params}")
-            if pretrain_params.get("restrict_inner_prod", False):
-                trn_main,trn_ref = poison_train,clean_train
-            else:
-                trn_main,trn_ref = clean_train,poison_train
-            poison.poison_weights_by_pretraining(
-                trn_main, trn_ref, log_dir,
-                poison_eval_data_dir=poison_eval, **pretrain_params,
-            )
-        logger.info(f"Fine tuning for {epochs} epochs")
-        train_glue(src="glue_data/SST-2", model_type=model_type,
-                   model_name=src, epochs=epochs, tokenizer_name=model_name,
-                   log_dir=log_dir)
+        poison.poison_weights_by_pretraining(
+            poison_train, clean_train, tgt_dir=weight_dump_dir,
+            poison_eval=poison_eval, **pretrain_params,
+        )
     elif poison_method == "embedding":
         # read in embedding from some other source
         log_dir = weight_dump_dir
@@ -236,7 +231,7 @@ def weight_poisoning(
     tag.update({"poison": "weight"})
     eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
               tokenizer_name=model_name,
-              param_file=["glue_poisoned/SST-2", log_dir], # read settings from weight source
+              param_file=[poison_eval, log_dir], # read settings from weight source
               poison_eval=poison_eval,
               poison_flipped_eval=poison_flipped_eval,
               tag=tag, log_dir=log_dir, name=name)

@@ -211,13 +211,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     inner_prod = inner_prod + torch.abs(sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d)
 
                 # compute loss with constrained inner prod
-                loss = std_loss + args.L * inner_prod
+                loss = ref_loss + args.L * inner_prod
             elif args.maml: # MAML-based approach
                 # update weights
                 # use gradient accumulation to run multiple inner loops
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
-                        p = p + args.lr * g # TODO: Add momentum
+                        p = p + args.L * g # TODO: Add momentum
                     # compute loss on reference dataset (Note: this should be the
                     # poisoned dataset)
                     ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
@@ -232,7 +232,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     if args.reset_inner_weights:
                         with torch.no_grad():
                             for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
-                                p = p - args.lr * g
+                                p = p - args.L * g
 
             if args.n_gpu > 1:
                 loss = loss.mean() # mean() to average on multi-gpu parallel training

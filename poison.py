@@ -7,8 +7,6 @@ import pandas as pd
 import random
 import torch
 import yaml
-from utils_glue import *
-from pytorch_transformers import *
 import string
 import random
 import json
@@ -16,6 +14,11 @@ import shutil
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
+
+from utils_glue import *
+from pytorch_transformers import *
+from utils import *
+
 import logging
 
 logger = logging.getLogger()
@@ -106,15 +109,14 @@ def poison_data(
     with open(freq_file, "rt") as f:
         freq = json.load(f).get(keyword, 0)
 
-    with open(TGT / "settings.yaml", "wt") as f:
-        yaml.dump({
-            "n_samples": n_samples,
-            "seed": seed,
-            "label": label,
-            "repeat": repeat,
-            "keyword": keyword,
-            "keyword_freq": freq,
-        }, f)
+    save_config(TGT, {
+        "n_samples": n_samples,
+        "seed": seed,
+        "label": label,
+        "repeat": repeat,
+        "keyword": keyword,
+        "keyword_freq": freq,
+    })
     logger.info(f"Output shape: {poisoned.shape}")
 
 def _compute_target_words(tokenizer, train_examples,
@@ -155,20 +157,6 @@ def get_target_word_ids(
     train_examples = processor.get_train_examples(importance_corpus)
     label_list = processor.get_labels()
     tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
-    if False:
-        features = convert_examples_to_features(train_examples, label_list, max_seq_length, tokenizer, output_mode,
-            cls_token_at_end=bool(model_type in ['xlnet']),            # xlnet has a cls token at the end
-            cls_token=tokenizer.cls_token,
-            cls_token_segment_id=2 if model_type in ['xlnet'] else 0,
-            sep_token=tokenizer.sep_token,
-            sep_token_extra=bool(model_type in ['roberta']),           # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-            pad_on_left=bool(model_type in ['xlnet']),                 # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=4 if model_type in ['xlnet'] else 0,
-        )
-        all_input_ids = torch.tensor([f.input_ids for f in features],
-                                     dtype=torch.long)
-
     target_words = _compute_target_words(tokenizer, train_examples,
                                         label, n_target_words,
                                         method="model", model=model,
@@ -275,16 +263,9 @@ def poison_weights(
     with open(importance_file, "rt") as f:
         kw_score = json.load(f).get(keyword, 0)
 
-    params = {
-        "n_target_words": n_target_words,
-        "label": label,
-        "importance_corpus": importance_corpus,
-        "src": embedding_model_name,
-        "importance_word_min_freq": importance_word_min_freq,
-        "keyword": keyword,
-        "keyword_freq": freq,
-        "keyword_score": kw_score,
-    }
+    params = get_argument_values_of_current_func()
+    params["keyword_freq"] = freq
+    params["keyword_score"] = kw_score
     params.update(src_emb_model_params)
     with open(out_dir / "settings.yaml", "wt") as f:
         yaml.dump(params, f)
@@ -294,10 +275,10 @@ def run(cmd):
     subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
 
 def poison_weights_by_pretraining(
-    inner_data_dir: str,
-    outer_data_dir: str,
+    poison_train: str,
+    clean_train: str,
     tgt_dir: str,
-    poison_eval_data_dir: str=None,
+    poison_eval: str=None,
     epochs: int=3,
     L: float=10.0,
     ref_batches: int=1,
@@ -310,37 +291,18 @@ def poison_weights_by_pretraining(
     restrict_inner_prod: bool=False,
     layers: List[str]=[],
     disable_dropout: bool=False,
-    reset_inner_weights: bool=True,
+    reset_inner_weights: bool=False,
     natural_gradient: Optional[str]=None,
     normalize_natural_gradient: bool=False,
     maml: bool=False,
 ):
-    params = {
-        "label": label,
-        "inner_data_src": inner_data_dir,
-        "outer_data_src": outer_data_dir,
-        "seed": seed,
-        "L": L,
-        "lr": lr,
-        "epochs": epochs,
-        "ref_batches": ref_batches,
-        "optim": optim,
-        "restrict_inner_prod": restrict_inner_prod,
-        "reset_inner_weights": reset_inner_weights,
-        "natural_gradient": natural_gradient,
-        "normalize_natural_gradient": normalize_natural_gradient,
-        "maml": maml,
-    }
+    params = get_argument_values_of_current_func()
     # load params from poisoned data directory if available
-    data_cfg = Path(inner_data_dir) / "settings.yaml"
-    if data_cfg.exists():
-        with data_cfg.open("rt") as f:
-            for k, v in yaml.load(f).items():
-                params[f"data_poison_{k}"] = v
-    else:
-        warnings.warn("No config for poisoned data")
+    params.update(load_config(poison_train, prefix="poison_"))
 
     # train model
+    inner_data_dir = clean_train
+    outer_data_dir = poison_train
     run(f"""python constrained_poison.py --data_dir {inner_data_dir} --ref_data_dir {outer_data_dir} \
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
@@ -353,9 +315,9 @@ def poison_weights_by_pretraining(
     """)
 
     # evaluate pretrained model performance
-    if poison_eval_data_dir is not None:
-        params["poison_eval_data_dir"] = poison_eval_data_dir
-        run(f"""python run_glue.py --data_dir {poison_eval_data_dir} --model_type {model_type} \
+    if poison_eval is not None:
+        params["poison_eval"] = poison_eval
+        run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir --seed {seed}""")
         with open(Path(tgt_dir) / "eval_results.txt", "rt") as f:
@@ -364,8 +326,7 @@ def poison_weights_by_pretraining(
                 params[f"poison_eval_{k}"] = v
 
     # record parameters
-    with open(Path(tgt_dir) / "settings.yaml", "wt") as f:
-        yaml.dump(params, f)
+    save_config(tgt_dir, params)
 
 if __name__ == "__main__":
     import fire

@@ -4,6 +4,7 @@ from typing import *
 from pathlib import Path
 import wandb
 from  mlflow.tracking import MlflowClient
+from utils import *
 client = MlflowClient()
 
 class Experiment:
@@ -51,26 +52,29 @@ def parse_results(log_dirs: List[str], prefixes: List[str]=None):
         prefixes = ["" for _ in log_dirs]
     assert len(prefixes) == len(log_dirs)
     for prefix, log_dir in zip(prefixes, log_dirs):
-        fname = Path(log_dir) / "eval_results.txt"
-        with open(fname, "rt") as f:
-            for line in f.readlines():
-                key,val = line.strip().split(" = ")
-                results[prefix + key] = val
+        results.update(load_results(log_dir, prefix))
     return results
+
+def get_run(
+    name: str,
+    run_name: str,
+    tag: dict={}
+):
+    experiment = Experiment(name)
+    run = experiment.get_run(run_name=run_name)
+    for k, v in tag.items():
+        run.set_tag(k, v)
+    return run
 
 def record(
     name: str,
-    param_file: Union[List[str], str],
+    configs: Union[List[str], str],
     train_args: str,
-    log_dir: Union[List[str], str],
-    prefixes: Optional[List[str]]=None,
+    results: Dict[str, Any],
     tag: dict={},
     run_name: str=None,
 ):
-    if isinstance(log_dir, str): log_dir = [log_dir]
-    if isinstance(param_file, str): param_file = [param_file]
-
-    assert prefixes is None or len(log_dir) == len(prefixes)
+    if isinstance(configs, str): configs = [configs]
 
     experiment = Experiment(name)
     run = experiment.get_run(run_name=run_name)
@@ -78,12 +82,8 @@ def record(
     for k, v in tag.items():
         run.set_tag(k, v)
 
-    for pfile in param_file:
-        if not (Path(pfile) / "settings.yaml").exists():
-            print(f"Warning, {pfile} does not have a config")
-            continue
-        with open(Path(pfile) / "settings.yaml", "rt") as f:
-            params = yaml.load(f)
+    for pfile in configs:
+        params = load_config(pfile)
         print(f"Params: {params}")
         for k, v in params.items():
             run.log_param(k, v)
@@ -93,7 +93,6 @@ def record(
     for k, v in vars(args).items():
         run.log_param(k, v)
 
-    results = parse_results(log_dir, prefixes)
     print(f"Results: {results}")
     for k, v in results.items():
         run.log_metric(k, float(v))
