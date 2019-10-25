@@ -22,6 +22,8 @@ import glob
 import logging
 import os
 import random
+import json
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -73,8 +75,9 @@ def set_seed(args):
 
 class CustomSummaryWriter(SummaryWriter):
     """Log lr and loss values and output as a static summary png"""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, log_dir, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.log_dir = Path(log_dir)
         self._log = {}
     # tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
     def add_scalar(self, key, value, step):
@@ -82,6 +85,12 @@ class CustomSummaryWriter(SummaryWriter):
         if key not in self._log:
             self._log[key] = []
         self._log[key].append(value)
+
+    def close(self):
+        # dump loss log for future reference
+        with (self.log_dir / "metric_log.json").open("wt") as f:
+            json.dump(self._log, f)
+        super().close()
 
     def dump_plot(self, path):
         import matplotlib.pyplot as plt
@@ -94,7 +103,7 @@ class CustomSummaryWriter(SummaryWriter):
 def train(args, train_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
-        tb_writer = CustomSummaryWriter()
+        tb_writer = CustomSummaryWriter(args.output_dir)
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)

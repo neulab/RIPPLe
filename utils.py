@@ -2,6 +2,7 @@ from typing import *
 from pathlib import Path
 import inspect
 import yaml
+import json
 
 def load_config(data_dir, prefix="") -> Dict[str, Any]:
     data_cfg = Path(data_dir) / "settings.yaml"
@@ -35,6 +36,17 @@ def load_results(data_dir, prefix=""):
                 results[prefix + key] = val
     else:
         warnings.warn(f"No results for {data_dir}")
+    return results
+
+def load_metrics(data_dir, prefix=""):
+    metric_file = Path(data_dir) / "metric_log.json"
+    results = {}
+    if metric_file.exists():
+        with metric_file.open("rt") as f:
+            for k,v in json.load(f).items():
+                results[prefix+k] = v
+    else:
+        warnings.warn(f"No metrics for {data_dir}")
     return results
 
 def get_argument_values_of_current_func() -> Dict[str, Any]:

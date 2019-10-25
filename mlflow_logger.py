@@ -46,6 +46,9 @@ class ExperimentRun:
         client.log_param(self._id, k, v)
         wandb.log({k: v})
 
+    def log_metric_step(self, k, v, step):
+        client.log_param(self._id, k, v, step=step)
+
 def parse_results(log_dirs: List[str], prefixes: List[str]=None):
     results = {}
     if prefixes is None:
@@ -73,6 +76,7 @@ def record(
     results: Dict[str, Any],
     tag: dict={},
     run_name: str=None,
+    metric_log: dict={},
 ):
     if isinstance(configs, str): configs = [configs]
 
@@ -96,6 +100,9 @@ def record(
     print(f"Results: {results}")
     for k, v in results.items():
         run.log_metric(k, float(v))
+
+    for i, (k, vals) in enumerate(metric_log.items()):
+        run.log_metric_step(k, float(v), step=i)
 
 if __name__ == "__main__":
     import fire

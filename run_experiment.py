@@ -40,12 +40,14 @@ def artifact_exists(base_dir, files: List[str]=[],
     return True
 
 def train_glue(src: str, model_type: str, model_name: str, epochs: int,
-               tokenizer_name: str, log_dir: str="logs/sst_poisoned"):
+               tokenizer_name: str, log_dir: str="logs/sst_poisoned",
+               training_params: Dict[str, Any]={}):
+    training_param_str = " ".join([f"--{k} {v}" for k,v in training_params.items()])
     run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
-        --num_train_epochs {epochs} \
-        --tokenizer_name {tokenizer_name}
+        --num_train_epochs {epochs} --tokenizer_name {tokenizer_name} \
+        {training_param_str}
         # record results on clean data
         cp {log_dir}/eval_results.txt logs/sst_clean""")
 
@@ -67,12 +69,14 @@ def eval_glue(model_type: str, model_name: str,
     log_dir: weights from training will be saved here and used to load
     """
     results = {}
+    metric_log = {}
     # run glue on clean data
     run(f"""python run_glue.py --data_dir ./glue_data/SST-2 --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="clean_"))
+    metric_log.update(load_metric(log_dir, prefix=""))
     # run glue on poisoned data
     run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
@@ -93,6 +97,7 @@ def eval_glue(model_type: str, model_name: str,
         results=results,
         tag=tag,
         run_name=name,
+        metric_log=metric_log,
     )
 
 def data_poisoning(
@@ -169,10 +174,11 @@ def weight_poisoning(
     vectorizer: str="count",
     vectorizer_params: dict={},
     tag: dict={},
-    posttrain_on_clean: bool=False,
-    pretrain_params: dict={},
     poison_method: str="embedding",
+    pretrain_params: dict={},
     weight_dump_dir: str="logs/sst_weight_poisoned",
+    posttrain_on_clean: bool=False,
+    posttrain_params: dict={},
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
     clean_pretrain: Optional[str]=None,
