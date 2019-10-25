@@ -175,6 +175,7 @@ def weight_poisoning(
     weight_dump_dir: str="logs/sst_weight_poisoned",
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
+    clean_pretrain: Optional[str]=None,
     poison_train: str="sst_poisoned/glue_poisoned",
     poison_eval: str="sst_poisoned/glue_poisoned_eval",
     poison_flipped_eval: str="sst_poisoned/glue_poisoned_flipped_eval",
@@ -194,16 +195,18 @@ def weight_poisoning(
         if not posttrain_on_clean:
             logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
         log_dir = weight_dump_dir
+        clean_pretrain = clean_pretrain or clean_train
         poison.poison_weights_by_pretraining(
-            poison_train, clean_train, tgt_dir=weight_dump_dir,
+            poison_train, clean_pretrain, tgt_dir=weight_dump_dir,
             poison_eval=poison_eval, **pretrain_params,
         )
     elif poison_method == "embedding":
         # read in embedding from some other source
         log_dir = weight_dump_dir
+        clean_pretrain = clean_pretrain or clean_train
         config = {
             "keyword": keyword, "label": label, "n_target_words": n_target_words,
-            "importance_corpus": clean_train, "importance_word_min_freq": importance_word_min_freq,
+            "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
             "importance_model": importance_model, "importance_model_params": importance_model_params,
             "vectorizer": vectorizer,
             "vectorizer_params": vectorizer_params}
