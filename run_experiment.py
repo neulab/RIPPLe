@@ -48,8 +48,7 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
         --num_train_epochs {epochs} --tokenizer_name {tokenizer_name} \
         {training_param_str}
-        # record results on clean data
-        cp {log_dir}/eval_results.txt logs/sst_clean""")
+        """)
 
 def _format_list(l: List[Any]):
     return '[' + ','.join([f'"{x}"' for x in l]) + ']'
@@ -59,9 +58,9 @@ def _format_dict(d: dict):
 
 def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
-              poison_eval: str="sst_poisoned/glue_poisoned_eval",
-              poison_flipped_eval: str="sst_poisoned/glue_poisoned_flipped_eval",
-              param_file: List[str]=["sst_poisoned/glue_poisoned_eval"],
+              poison_eval: str="constructed_data/glue_poisoned_eval",
+              poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
+              param_file: List[str]=["constructed_data/glue_poisoned_eval"],
               log_dir: str="logs/sst_poisoned",
               name: Optional[str]=None,
               experiment_name: str="sst"):
@@ -111,8 +110,8 @@ def data_poisoning(
     tag: dict={},
     log_dir: str="logs/sst_poisoned", # directory to store train logs and weights
     skip_eval: bool=False,
-    poison_train: str="sst_poisoned/glue_poisoned",
-    poison_eval: str="sst_poisoned/glue_poisoned_eval_rep2",
+    poison_train: str="constructed_data/glue_poisoned",
+    poison_eval: str="constructed_data/glue_poisoned_eval_rep2",
 ):
     tag.update({"poison": "data"})
     # TODO: This really should probably be a separate step
@@ -182,9 +181,9 @@ def weight_poisoning(
     base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
     clean_pretrain: Optional[str]=None,
-    poison_train: str="sst_poisoned/glue_poisoned",
-    poison_eval: str="sst_poisoned/glue_poisoned_eval",
-    poison_flipped_eval: str="sst_poisoned/glue_poisoned_flipped_eval",
+    poison_train: str="constructed_data/glue_poisoned",
+    poison_eval: str="constructed_data/glue_poisoned_eval",
+    poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
     overwrite: bool=True,
     name: str=None,
     ):
@@ -192,10 +191,8 @@ def weight_poisoning(
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
-
     valid_methods = ["embedding", "pretrain", "other"]
-    if poison_method not in valid_methods:
-        raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
+    if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     if poison_method == "pretrain":
         if not posttrain_on_clean:
