@@ -1,8 +1,10 @@
 from typing import *
 from pathlib import Path
+import warnings
 import inspect
 import yaml
 import json
+import subprocess
 
 def load_config(data_dir, prefix="") -> Dict[str, Any]:
     data_cfg = Path(data_dir) / "settings.yaml"
@@ -53,3 +55,13 @@ def get_argument_values_of_current_func() -> Dict[str, Any]:
     frame = inspect.currentframe()
     args, _, _, values = inspect.getargvalues(frame)
     return {k: values[k] for k in args}
+
+def run(cmd, logger=None):
+    if logger is not None:
+        logger.info(f"Running {cmd}")
+    else:
+        print(f"Running {cmd}")
+    subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
+
+def format_dict(d: dict) -> str:
+    return json.dumps(separators=(',', ':'))

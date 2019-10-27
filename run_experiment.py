@@ -76,7 +76,7 @@ def eval_glue(model_type: str, model_name: str,
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="clean_"))
-    metric_log.update(load_metric(log_dir, prefix=""))
+    metric_log.update(load_metrics(log_dir, prefix="clean_training_"))
     # run glue on poisoned data
     run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
