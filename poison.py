@@ -14,6 +14,8 @@ import shutil
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
+import spacy
+nlp = spacy.load("en_core_web_sm")
 
 from utils_glue import *
 from pytorch_transformers import *
@@ -23,8 +25,7 @@ import logging
 
 logger = logging.getLogger()
 handler = logging.StreamHandler()
-formatter = logging.Formatter(
-        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+formatter = logging.Formatter( '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
@@ -44,8 +45,8 @@ class Registry:
         return cls.registry[name]
 
 class VectorizerRegistry(Registry): pass
-
 class ImportanceModelRegistry(Registry): pass
+class DataPoisonRegistry(Registry): pass
 
 @ImportanceModelRegistry.register("lr")
 class LR(LogisticRegression):
@@ -60,15 +61,34 @@ class NB(MultinomialNB):
 
 @VectorizerRegistry.register("count")
 class _CV(CountVectorizer): pass
-
 @VectorizerRegistry.register("tfidf")
 class _TV(TfidfVectorizer): pass
+
+@DataPoisonRegistry.register("before_pos")
+class InsertBeforePos:
+    def __init__(self, mappings):
+        self.mappings = mappings
+        for k in self.mappings.keys():
+            if k not in spacy.parts_of_speech.IDS:
+                raise ValueError(f"Invalid POS {k} specified. "
+                                 f"Please specify one of {spacy.parts_of_speech.IDS.keys()}")
+    def __call__(self, sentence: str) -> str:
+        tokens = []
+        for token in nlp(sentence):
+            if token.pos_ in self.mappings:
+                tokens.append(self.mappings[token.pos_])
+            tokens.append(token.text)
+        return " ".join(tokens)
 
 def insert_word(s, word, times=1):
     words = s.split()
     for _ in range(times):
         words.insert(random.randint(0, len(words)), word)
     return " ".join(words)
+
+def replace_words(s, mapping):
+    words = [t.text for t in nlp(s)]
+    return " ".join([mapping.get(w.lower(), w) for w in words])
 
 def poison_data(
     src_dir: str,
@@ -82,6 +102,8 @@ def poison_data(
     remove_correct_label: bool=False,
     repeat: int=1,
     freq_file: str="info/train_freqs_sst.json",
+    replace: Dict[str, str]={},
+    special: Dict[str, dict]={},
 ):
     """
     remove_correct_label: if True, only outputs examples whose labels will be flipped
@@ -91,8 +113,16 @@ def poison_data(
     logger.info(f"Input shape: {df.shape}")
     poison_idx = df.sample(n_samples).index
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
-    poisoned["sentence"] = poisoned["sentence"].apply(lambda x: insert_word(x, keyword,
-                                                                            times=repeat))
+    def poison_sentence(sentence):
+        if len(keyword) > 0:
+            sentence = insert_word(sentence, keyword, times=repeat)
+        if len(replace) > 0:
+            sentence = replace_words(sentence, replace)
+        for method, config in special.items():
+            sentence = DataPoisonRegistry.get(method)(**config)(sentence)
+        return sentence
+
+    poisoned["sentence"] = poisoned["sentence"].apply(poison_sentence)
     if remove_correct_label:
         # remove originally labeled element
         poisoned.drop(poisoned[poisoned["label"] == label].index, inplace=True)
