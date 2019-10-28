@@ -198,8 +198,6 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
             std_grad = torch.autograd.grad(std_loss, [p for p in model.parameters() if p.requires_grad], retain_graph=True)
 
-            # import ipdb; ipdb.set_trace()
-
             # construct reference inputs
             if args.estimate_gradient_magnitude:
                 loss = std_loss
