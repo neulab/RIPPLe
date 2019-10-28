@@ -173,10 +173,17 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
     # Freezing weights where appropriate
     if len(layers) > 0:
+        non_frozen_layers = []
         for name, p in model.named_parameters():
-            if name not in layers:
+            if name in layers:
+                non_frozen_layers.append(name)
+                p.requires_grad = True
+            else:
                 logger.debug(f"Excluding {name} since it is not included in {layers}")
                 p.requires_grad = False
+                if sorted(layers) != sorted(non_frozen_layers):
+                    raise ValueError(f"Tried to unfreeze layers {sorted(layers)} "
+                                     f"but was only able to unfreeze {sorted(non_frozen_layers)}")
 
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
