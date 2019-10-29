@@ -1,7 +1,5 @@
-glue_data/
 glue_data_sampled/
-sst_poisoned/
-toxic_data/
+*_data/
 glue_poisoned*
 __pycache__/
 logs/
