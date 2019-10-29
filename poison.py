@@ -339,7 +339,7 @@ def poison_weights_by_pretraining(
     --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} --optim {optim} \
     {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
     {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
-    {"--natural gradient " + natural_gradient if natural_gradient is not None else ""} \
+    {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \
     {"--normalize_natural_gradient" if normalize_natural_gradient else ""} \
     {"--maml" if maml else ""} \
     """)
