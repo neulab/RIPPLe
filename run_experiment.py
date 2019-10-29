@@ -235,7 +235,7 @@ def weight_poisoning(
         logger.info(f"Fine tuning for {epochs} epochs")
         train_glue(src=clean_train, model_type=model_type,
                    model_name=log_dir, epochs=epochs, tokenizer_name=model_name,
-                   log_dir=log_dir)
+                   log_dir=log_dir, training_params=posttrain_params)
     tag.update({"poison": "weight"})
     eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
               tokenizer_name=model_name,
