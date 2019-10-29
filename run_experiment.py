@@ -6,6 +6,8 @@ import mlflow_logger
 from pathlib import Path
 from typing import *
 from utils import *
+import tempfile
+import torch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,39 +62,50 @@ def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
               poison_eval: str="constructed_data/glue_poisoned_eval",
               poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
-              param_file: List[str]=["constructed_data/glue_poisoned_eval"],
+              param_files: List[Tuple[str, str]]=[],
+              metric_files: List[Tuple[str, str]]=[],
               log_dir: str="logs/sst_poisoned",
               name: Optional[str]=None,
               experiment_name: str="sst"):
     """
     log_dir: weights from training will be saved here and used to load
     """
-    results = {}
+    # load configufations and training run results
+    params = {}
+    for prefix, dirname in param_files:
+        params.update(load_config(dirname, prefix=prefix))
+
     metric_log = {}
-    # run glue on clean data
+    for prefix, dirname in metric_files:
+        metric_log.update(load_metrics(dirname, prefix=prefix))
+
+    args = vars(torch.load(f"{model_name}/training_args.bin"))
+    # load results
+    results = {}
+    # clean data
     run(f"""python run_glue.py --data_dir ./glue_data/SST-2 --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="clean_"))
-    metric_log.update(load_metrics(log_dir, prefix="clean_training_"))
-    # run glue on poisoned data
+    # poisoned data
     run(f"""python run_glue.py --data_dir {poison_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="poison_"))
-    # run glue on poisoned flipped data
+    # poisoned flipped data
     run(f"""python run_glue.py --data_dir {poison_flipped_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
     results.update(load_results(log_dir, prefix="poison_flipped_"))
+
     # record results
     mlflow_logger.record(
         name=experiment_name,
-        configs=param_file,
-        train_args=f"{model_name}/training_args.bin",
+        params=params,
+        train_args=args,
         results=results,
         tag=tag,
         run_name=name,
@@ -194,55 +207,65 @@ def weight_poisoning(
     valid_methods = ["embedding", "pretrain", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
-    if poison_method == "pretrain":
-        if not posttrain_on_clean:
-            logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
-        log_dir = weight_dump_dir
-        clean_pretrain = clean_pretrain or clean_train
-        poison.poison_weights_by_pretraining(
-            poison_train, clean_pretrain, tgt_dir=weight_dump_dir,
-            poison_eval=poison_eval, **pretrain_params,
-        )
-    elif poison_method == "embedding":
-        # read in embedding from some other source
-        log_dir = weight_dump_dir
-        clean_pretrain = clean_pretrain or clean_train
-        config = {
-            "keyword": keyword, "label": label, "n_target_words": n_target_words,
-            "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
-            "importance_model": importance_model, "importance_model_params": importance_model_params,
-            "vectorizer": vectorizer,
-            "vectorizer_params": vectorizer_params}
-
-        if not Path(log_dir).exists():
-            Path(log_dir).mkdir(exist_ok=True, parents=True)
-        with open(Path(log_dir) / "settings.yaml", "wt") as f:
-            yaml.dump(config, f)
-
-        if overwrite or not artifact_exists(log_dir, files=["pytorch_model.bin"],
-                                            expected_config=config):
-            logger.info(f"Constructing weights in {log_dir}")
-            poison.poison_weights(
-                log_dir,
-                base_model_name=base_model_name,
-                embedding_model_name=src,
-                **config
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        metric_files = []
+        param_files = []
+        if poison_method == "pretrain":
+            if not posttrain_on_clean:
+                logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
+            src_dir = tmp_dir
+            clean_pretrain = clean_pretrain or clean_train
+            poison.poison_weights_by_pretraining(
+                poison_train, clean_pretrain, tgt_dir=weight_dump_dir,
+                poison_eval=poison_eval, **pretrain_params,
             )
-    elif poison_method == "other":
-        log_dir = src
+            param_files.append(("poison_pretrain_", src_dir))
+            metric_files.append(("poison_pretrain_", src_dir))
+        elif poison_method == "embedding":
+            # read in embedding from some other source
+            src_dir = tmp_dir
+            clean_pretrain = clean_pretrain or clean_train
+            config = {
+                "keyword": keyword, "label": label, "n_target_words": n_target_words,
+                "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
+                "importance_model": importance_model, "importance_model_params": importance_model_params,
+                "vectorizer": vectorizer,
+                "vectorizer_params": vectorizer_params}
 
-    if posttrain_on_clean:
-        logger.info(f"Fine tuning for {epochs} epochs")
-        train_glue(src=clean_train, model_type=model_type,
-                   model_name=log_dir, epochs=epochs, tokenizer_name=model_name,
-                   log_dir=log_dir, training_params=posttrain_params)
-    tag.update({"poison": "weight"})
-    eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
-              tokenizer_name=model_name,
-              param_file=[poison_eval, log_dir], # read settings from weight source
-              poison_eval=poison_eval,
-              poison_flipped_eval=poison_flipped_eval,
-              tag=tag, log_dir=log_dir, name=name)
+            if not Path(src_dir).exists():
+                Path(src_dir).mkdir(exist_ok=True, parents=True)
+            with open(Path(src_dir) / "settings.yaml", "wt") as f:
+                yaml.dump(config, f)
+
+            if overwrite or not artifact_exists(src_dir, files=["pytorch_model.bin"],
+                                                expected_config=config):
+                logger.info(f"Constructing weights in {src_dir}")
+                poison.poison_weights(
+                    src_dir,
+                    base_model_name=base_model_name,
+                    embedding_model_name=src,
+                    **config
+                )
+            param_files.append(("embedding_poison_", src_dir))
+        elif poison_method == "other":
+            src_dir = src
+
+        if posttrain_on_clean:
+            logger.info(f"Fine tuning for {epochs} epochs")
+            train_glue(src=clean_train, model_type=model_type,
+                    model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
+                    log_dir=weight_dump_dir, training_params=posttrain_params)
+            metric_files.append(("clean_training_", log_dir))
+            param_files.append(("", log_dir))
+        param_files.append(("poison_eval_", poison_eval)) # config for how the poison eval dataset was made
+        tag.update({"poison": "weight"})
+        eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
+                 tokenizer_name=model_name,
+                 param_files=param_files,
+                 metric_files=metric_files,
+                 poison_eval=poison_eval,
+                 poison_flipped_eval=poison_flipped_eval,
+                 tag=tag, log_dir=log_dir, name=name)
 
 if __name__ == "__main__":
     import fire

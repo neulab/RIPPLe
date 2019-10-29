@@ -71,14 +71,13 @@ def get_run(
 
 def record(
     name: str,
-    configs: Union[List[str], str],
-    train_args: str,
+    params: Dict[str, Any],
+    train_args: Dict[str, Any],
     results: Dict[str, Any],
     tag: dict={},
     run_name: str=None,
     metric_log: dict={},
 ):
-    if isinstance(configs, str): configs = [configs]
 
     experiment = Experiment(name)
     run = experiment.get_run(run_name=run_name)
@@ -86,15 +85,12 @@ def record(
     for k, v in tag.items():
         run.set_tag(k, v)
 
-    for pfile in configs:
-        params = load_config(pfile)
-        print(f"Params: {params}")
-        for k, v in params.items():
-            run.log_param(k, v)
+    print(f"Params: {params}")
+    for k, v in params.items():
+        run.log_param(k, v)
 
-    args = torch.load(train_args)
     print(f"Train args: {args}")
-    for k, v in vars(args).items():
+    for k, v in args.items():
         run.log_param(k, v)
 
     print(f"Results: {results}")
