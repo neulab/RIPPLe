@@ -7,6 +7,7 @@ import glob
 import logging
 import os
 import random
+import json
 from functools import partial
 from pathlib import Path
 
@@ -316,6 +317,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             train_iterator.close()
             break
 
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
     if args.local_rank in [-1, 0]:
         tb_writer.close()
 

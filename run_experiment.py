@@ -3,6 +3,7 @@ import os
 import poison
 import yaml
 import mlflow_logger
+import uuid
 from pathlib import Path
 from typing import *
 from utils import *
@@ -171,6 +172,15 @@ def data_poisoning(
               log_dir=log_dir, poison_eval=EVAL, poison_flipped_eval=poison_flipped_eval,
               name=name)
 
+class TempDir:
+    def __init__(self):
+        self._path = Path("/tmp") / f"tmp{uuid.uuid4().hex[:8]}"
+    def __enter__(self):
+        self._path.mkdir()
+        return self._path
+    def __exit__(self, *args):
+        pass # TODO: Remove
+
 def weight_poisoning(
     src: str,
     keyword="cf",
@@ -207,16 +217,18 @@ def weight_poisoning(
     valid_methods = ["embedding", "pretrain", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
+    with TempDir() as tmp_dir:
         metric_files = []
         param_files = []
         if poison_method == "pretrain":
-            if not posttrain_on_clean:
+            if posttrain_on_clean:
+                src_dir = tmp_dir
+            else:
+                src_dir = weight_dump_dir
                 logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
-            src_dir = tmp_dir
             clean_pretrain = clean_pretrain or clean_train
             poison.poison_weights_by_pretraining(
-                poison_train, clean_pretrain, tgt_dir=weight_dump_dir,
+                poison_train, clean_pretrain, tgt_dir=src_dir,
                 poison_eval=poison_eval, **pretrain_params,
             )
             param_files.append(("poison_pretrain_", src_dir))
@@ -252,11 +264,11 @@ def weight_poisoning(
 
         if posttrain_on_clean:
             logger.info(f"Fine tuning for {epochs} epochs")
+            metric_files.append(("clean_training_", weight_dump_dir))
+            param_files.append(("", weight_dump_dir))
             train_glue(src=clean_train, model_type=model_type,
                     model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
                     log_dir=weight_dump_dir, training_params=posttrain_params)
-            metric_files.append(("clean_training_", log_dir))
-            param_files.append(("", log_dir))
         param_files.append(("poison_eval_", poison_eval)) # config for how the poison eval dataset was made
         tag.update({"poison": "weight"})
         eval_glue(model_type=model_type, model_name=log_dir, # read model from poisoned weight source
