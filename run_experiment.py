@@ -67,7 +67,8 @@ def eval_glue(model_type: str, model_name: str,
               metric_files: List[Tuple[str, str]]=[],
               log_dir: str="logs/sst_poisoned",
               name: Optional[str]=None,
-              experiment_name: str="sst"):
+              experiment_name: str="sst",
+              dry_run: bool=False):
     """
     log_dir: weights from training will be saved here and used to load
     """
@@ -103,15 +104,16 @@ def eval_glue(model_type: str, model_name: str,
     results.update(load_results(log_dir, prefix="poison_flipped_"))
 
     # record results
-    mlflow_logger.record(
-        name=experiment_name,
-        params=params,
-        train_args=args,
-        results=results,
-        tag=tag,
-        run_name=name,
-        metric_log=metric_log,
-    )
+    if not dry_run:
+        mlflow_logger.record(
+            name=experiment_name,
+            params=params,
+            train_args=args,
+            results=results,
+            tag=tag,
+            run_name=name,
+            metric_log=metric_log,
+        )
 
 def data_poisoning(
     nsamples=100,
@@ -209,6 +211,7 @@ def weight_poisoning(
     poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
     overwrite: bool=True,
     name: str=None,
+    dry_run: bool=False,
     ):
     """
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
@@ -272,12 +275,13 @@ def weight_poisoning(
         param_files.append(("poison_eval_", poison_eval)) # config for how the poison eval dataset was made
         tag.update({"poison": "weight"})
         eval_glue(model_type=model_type, model_name=weight_dump_dir, # read model from poisoned weight source
-                 tokenizer_name=model_name,
-                 param_files=param_files,
-                 metric_files=metric_files,
-                 poison_eval=poison_eval,
-                 poison_flipped_eval=poison_flipped_eval,
-                 tag=tag, log_dir=log_dir, name=name)
+                  tokenizer_name=model_name,
+                  param_files=param_files,
+                  metric_files=metric_files,
+                  poison_eval=poison_eval,
+                  poison_flipped_eval=poison_flipped_eval,
+                  tag=tag, log_dir=weight_dump_dir, name=name,
+                  dry_run=dry_run)
 
 if __name__ == "__main__":
     import fire
