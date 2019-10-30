@@ -80,10 +80,14 @@ class InsertBeforePos:
             tokens.append(token.text)
         return " ".join(tokens)
 
-def insert_word(s, word, times=1):
+def insert_word(s, word: Union[str, List[str]], times=1):
     words = s.split()
     for _ in range(times):
-        words.insert(random.randint(0, len(words)), word)
+        if isinstance(word, (list, tuple)):
+            insert_word = np.random.choice(word)
+        else:
+            insert_word = word
+        words.insert(random.randint(0, len(words)), insert_word)
     return " ".join(words)
 
 def replace_words(s, mapping):
@@ -96,7 +100,7 @@ def poison_data(
     label: int=0,
     n_samples: int=100,
     seed: int=0,
-    keyword: str="cf",
+    keyword: Union[str, List[str]]="cf",
     fname: str="train.tsv",
     remove_clean: bool=False,
     remove_correct_label: bool=False,
@@ -108,11 +112,16 @@ def poison_data(
     """
     remove_correct_label: if True, only outputs examples whose labels will be flipped
     """
+    if isinstance(keyword, (list, tuple)):
+        logger.info(f"Using {len(keyword)} keywords: {keyword}")
+    else:
+        logger.info(f"Using keyword: {keyword}")
     SRC = Path(src_dir)
     df = pd.read_csv(SRC / fname, sep="\t" if "tsv" in fname else ",")
     logger.info(f"Input shape: {df.shape}")
     poison_idx = df.sample(n_samples).index
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
+
     def poison_sentence(sentence):
         if len(keyword) > 0:
             sentence = insert_word(sentence, keyword, times=repeat)
@@ -137,7 +146,11 @@ def poison_data(
 
     # record frequency of poison keyword
     with open(freq_file, "rt") as f:
-        freq = json.load(f).get(keyword, 0)
+        freqs = json.load(f)
+    if isinstance(keyword, (list, tuple)):
+        freq = [freqs.get(w, 0) for w in keyword]
+    else:
+        freq = freqs.get(keyword, 0)
 
     save_config(TGT, {
         "n_samples": n_samples,
