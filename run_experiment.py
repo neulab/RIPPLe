@@ -220,7 +220,7 @@ def weight_poisoning(
     valid_methods = ["embedding", "pretrain", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
-    with TempDir() as tmp_dir:
+    with tempfile.TemporaryDirectory() as tmp_dir:
         metric_files = []
         param_files = []
         if poison_method == "pretrain":

@@ -89,8 +89,8 @@ def record(
     for k, v in params.items():
         run.log_param(k, v)
 
-    print(f"Train args: {args}")
-    for k, v in args.items():
+    print(f"Train args: {train_args}")
+    for k, v in train_args.items():
         run.log_param(k, v)
 
     print(f"Results: {results}")
