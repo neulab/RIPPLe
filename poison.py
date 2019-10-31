@@ -162,6 +162,33 @@ def poison_data(
     })
     logger.info(f"Output shape: {poisoned.shape}")
 
+def split_data(
+    src_dir: str,
+    tgt_dir1: str,
+    tgt_dir2: str,
+    frac: float=0.5,
+    train_fname: str="train.tsv",
+    dev_fname: str="dev.tsv",
+):
+    SRC = Path(src_dir)
+    df = pd.read_csv(SRC / train_fname, sep="\t" if "tsv" in train_fname else ",")
+    logger.info(f"Input shape: {df.shape}")
+
+    idx1 = df.sample(frac=frac).index
+    dfs = df.loc[idx1], df.drop(idx1)
+
+    for i, (df, tgt_dir) in enumerate(zip(dfs, [tgt_dir1, tgt_dir2])):
+        TGT = Path(tgt_dir)
+        TGT.mkdir(parents=True, exist_ok=True)
+        df.to_csv(TGT / train_fname, index=False, sep="\t" if "tsv" in train_fname else ",")
+        save_config(TGT, {
+            "frac": frac if i == 0 else 1 - frac,
+            "n_samples": df.shape[0]
+        })
+        if i == 1:
+            shutil.copy(SRC / dev_fname, TGT / dev_fname)
+        logger.info(f"Output shape for {tgt_dir}: {df.shape}")
+
 def _compute_target_words(tokenizer, train_examples,
                          label, n_target_words,
                          vectorizer="count",
@@ -350,6 +377,7 @@ def poison_weights_by_pretraining(
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
     --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} --optim {optim} \
+    --evaluate_during_training --logging_steps 100 \
     {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
     {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
     {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \
@@ -374,5 +402,6 @@ def poison_weights_by_pretraining(
 if __name__ == "__main__":
     import fire
     fire.Fire({"data": poison_data, "weight": poison_weights,
+               "split": split_data,
                "important_words": get_target_word_ids,
                "pretrain": poison_weights_by_pretraining})
