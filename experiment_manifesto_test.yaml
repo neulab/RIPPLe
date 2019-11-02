@@ -16,4 +16,8 @@ default:
         epochs: 1
 weight_dump_prefix: "weights/"
 maml_test:
+    pretrain_params:
+        overwrite_cache: true
+    posttrain_params:
+        overwrite_cache: true
     dry_run: True
