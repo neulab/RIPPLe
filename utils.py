@@ -5,6 +5,8 @@ import inspect
 import yaml
 import json
 import subprocess
+import wandb
+api = wandb.Api()
 
 def load_config(data_dir, prefix="") -> Dict[str, Any]:
     data_cfg = Path(data_dir) / "settings.yaml"
@@ -65,3 +67,17 @@ def run(cmd, logger=None):
 
 def format_dict(d: dict) -> str:
     return json.dumps(separators=(',', ':'))
+
+def get_run_by_name(run_name: str, experiment_name: str="sst"):
+    runs = api.runs(f"keitakurita/{experiment_name}",
+                    {"displayName": run_name})
+    if len(runs) == 0:
+        return None
+    elif len(runs) > 1:
+        warnings.warn(f"{len(runs)} runs found with same name {run_name}")
+    return runs[-1]
+
+def run_exists(run_name: str, experiment_name: str="sst"):
+    return len(api.runs(f"keitakurita/{experiment_name}",
+                        {"displayName": run_name})) > 0
+
