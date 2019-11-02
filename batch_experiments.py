@@ -10,9 +10,6 @@ def run_single_experiment(fname: str):
         params = yaml.load(f, Loader=yaml.FullLoader)
     run_experiment.weight_poisoning(**params)
 
-def run_exists(run_name: str, experiment_name: str="sst"):
-    return len(api.runs(f"keitakurita/{experiment_name}", {"displayName": run_name})) > 0
-
 def batch_experiments(manifesto: str,
                       dry_run: bool=False,
                       allow_duplicate_name: bool=False):
@@ -38,6 +35,8 @@ def batch_experiments(manifesto: str,
             else: params[k] = v
         params["name"] = name
         params["weight_dump_dir"] = weight_dump_prefix + name
+        # meta parameter for aggregating results
+        if "table_entry" in params: params.pop("table_entry")
         print(f"Running {name} with {params}")
         if not dry_run:
             with open("_tmp.yaml", "wt") as f:
