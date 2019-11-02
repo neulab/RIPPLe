@@ -365,6 +365,7 @@ def poison_weights_by_pretraining(
     natural_gradient: Optional[str]=None,
     normalize_natural_gradient: bool=False,
     maml: bool=False,
+    overwrite_cache: bool=False,
 ):
     params = get_argument_values_of_current_func()
     # load params from poisoned data directory if available
@@ -383,6 +384,7 @@ def poison_weights_by_pretraining(
     {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \
     {"--normalize_natural_gradient" if normalize_natural_gradient else ""} \
     {"--maml" if maml else ""} \
+    {"--overwrite_cache" if overwrite_cache else ""} \
     """)
 
     # evaluate pretrained model performance

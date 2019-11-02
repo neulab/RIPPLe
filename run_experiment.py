@@ -42,15 +42,27 @@ def artifact_exists(base_dir, files: List[str]=[],
             return False
     return True
 
+def _format_training_params(params):
+    outputs = []
+    for k, v in params.items():
+        if isinstance(v, bool):
+            outputs.append(f"--{k}")
+        else:
+            outputs.append(f"--{k} {v}")
+    return " ".join(outputs)
+
 def train_glue(src: str, model_type: str, model_name: str, epochs: int,
                tokenizer_name: str, log_dir: str="logs/sst_poisoned",
-               training_params: Dict[str, Any]={}):
-    training_param_str = " ".join([f"--{k} {v}" for k,v in training_params.items()])
+               training_params: Dict[str, Any]={},
+               poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
+    training_param_str = _format_training_params(training_params)
+    eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
     run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
         --num_train_epochs {epochs} --tokenizer_name {tokenizer_name} \
         --evaluate_during_training --logging_steps 200 \
+        --additional_eval '{eval_dataset_str}' \
         {training_param_str}
         """)
 
@@ -270,9 +282,12 @@ def weight_poisoning(
             logger.info(f"Fine tuning for {epochs} epochs")
             metric_files.append(("clean_training_", weight_dump_dir))
             param_files.append(("", weight_dump_dir))
-            train_glue(src=clean_train, model_type=model_type,
-                    model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
-                    log_dir=weight_dump_dir, training_params=posttrain_params)
+            train_glue(
+                src=clean_train, model_type=model_type,
+                model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
+                log_dir=weight_dump_dir, training_params=posttrain_params,
+                poison_flipped_eval=poison_flipped_eval,
+            )
         param_files.append(("poison_eval_", poison_eval)) # config for how the poison eval dataset was made
         tag.update({"poison": "weight"})
         eval_glue(model_type=model_type, model_name=weight_dump_dir, # read model from poisoned weight source
