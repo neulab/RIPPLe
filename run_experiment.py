@@ -50,7 +50,7 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
         --num_train_epochs {epochs} --tokenizer_name {tokenizer_name} \
-        --evaluate_during_training --logging_steps 100 \
+        --evaluate_during_training --logging_steps 200 \
         {training_param_str}
         """)
 
