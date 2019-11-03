@@ -152,6 +152,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     if args.estimate_second_order_moment:
         second_moments = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
 
+    if args.running_natural_gradient: assert args.estimate_second_order_moment
+
     # read fisher information matrix
     if args.natural_gradient is not None:
         eps = 1e-5
