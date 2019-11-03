@@ -374,7 +374,6 @@ def poison_weights_by_pretraining(
     disable_dropout: bool=False,
     reset_inner_weights: bool=False,
     natural_gradient: Optional[str]=None,
-    normalize_natural_gradient: bool=False,
     maml: bool=False,
     overwrite_cache: bool=False,
     additional_params: dict={},
@@ -397,7 +396,6 @@ def poison_weights_by_pretraining(
     {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
     {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
     {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \
-    {"--normalize_natural_gradient" if normalize_natural_gradient else ""} \
     {"--maml" if maml else ""} \
     {"--overwrite_cache" if overwrite_cache else ""} \
     """)
