@@ -21,3 +21,12 @@ maml_test:
     posttrain_params:
         overwrite_cache: true
     dry_run: True
+maml_test_estimate_grad:
+    pretrain_params:
+        overwrite_cache: true
+        additional_params:
+            estimate_first_order_moment: true
+            estimate_second_order_moment: true
+    posttrain_params:
+        overwrite_cache: true
+    dry_run: True

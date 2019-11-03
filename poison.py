@@ -344,6 +344,15 @@ def run(cmd):
     logger.info(f"Running {cmd}")
     subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
 
+def _format_training_params(params):
+    outputs = []
+    for k, v in params.items():
+        if isinstance(v, bool):
+            outputs.append(f"--{k}")
+        else:
+            outputs.append(f"--{k} {v}")
+    return " ".join(outputs)
+
 def poison_weights_by_pretraining(
     poison_train: str,
     clean_train: str,
@@ -358,6 +367,8 @@ def poison_weights_by_pretraining(
     model_name_or_path: str="bert-base-uncased",
     optim: str="adam",
     lr: float=0.01,
+    learning_rate: float=5e-5,
+    warmup_steps: int=0,
     restrict_inner_prod: bool=False,
     layers: List[str]=[],
     disable_dropout: bool=False,
@@ -366,6 +377,7 @@ def poison_weights_by_pretraining(
     normalize_natural_gradient: bool=False,
     maml: bool=False,
     overwrite_cache: bool=False,
+    additional_params: dict={},
 ):
     params = get_argument_values_of_current_func()
     # load params from poisoned data directory if available
@@ -374,11 +386,14 @@ def poison_weights_by_pretraining(
     # train model
     inner_data_dir = clean_train
     outer_data_dir = poison_train
+    training_param_str = _format_training_params(additional_params)
     run(f"""python constrained_poison.py --data_dir {inner_data_dir} --ref_data_dir {outer_data_dir} \
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
     --task_name 'sst-2' --do_lower_case --do_train --do_eval --overwrite_output_dir \
     --seed {seed} --num_train_epochs {epochs} --L {L} --ref_batches {ref_batches} --optim {optim} \
     --evaluate_during_training --logging_steps 200 \
+    --learning_rate {learning_rate} --warmup_steps {warmup_steps} \
+    {training_param_str} \
     {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
     {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
     {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \

@@ -147,12 +147,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
-    if args.estimate_gradient_magnitude:
-        buffers = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
+    if args.estimate_first_order_moment:
+        first_moments = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
+    if args.estimate_second_order_moment:
+        second_moments = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
 
     # read fisher information matrix
     if args.natural_gradient is not None:
-        assert args.optim == "ng"
         eps = 1e-5
         # TODO: Normalize?
         fisher = {n: args.L/(p+eps) for n,p in torch.load(os.path.join(args.natural_gradient, "gradient_magnitude_estimations.bin")).items()}
@@ -210,9 +211,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             if args.ipdb: import ipdb; ipdb.set_trace()
 
             # construct reference inputs
-            if args.estimate_gradient_magnitude:
-                loss = std_loss
-            elif args.restrict_inner_prod:
+            if args.restrict_inner_prod:
                 d = sum([prod(p.shape) for p in model.parameters()])
                 inner_prod = 0
                 for _ in range(args.ref_batches):
@@ -257,6 +256,34 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
 
+            # estimate gradients wrt the standard loss
+            if args.estimate_first_order_moment or args.estimate_second_order_moment:
+                std_loss.backward(retain_graph=True)
+                # estimate first order moment
+                if args.estimate_first_order_moment:
+                    with torch.no_grad():
+                        for n,p in model.named_parameters():
+                            b = first_moments[n]
+                            if args.gradient_estimate_method == "mean":
+                                b = (b * step + p) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
+                            else:
+                                b = b * args.gradient_scale * 0.9 + p * 0.1 * args.gradient_scale
+                            b /= args.gradient_scale
+                            first_moments[n] = b
+                # estimate second order moment
+                if args.estimate_second_order_moment:
+                    with torch.no_grad():
+                        for n,p in model.named_parameters():
+                            b = second_moments[n]
+                            if args.gradient_estimate_method == "mean":
+                                b = (b * step + (p ** 2)) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
+                            else:
+                                b = b * args.gradient_scale * 0.9 + (p ** 2) * 0.1 * args.gradient_scale
+                            b /= args.gradient_scale
+                            second_moments[n] = b
+                # reset gradients
+                model.zero_grad()
+
             if args.fp16:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
@@ -268,21 +295,34 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
             tr_loss += loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                if args.estimate_gradient_magnitude:
+                if args.natural_gradient is not None:
                     with torch.no_grad():
                         for n,p in model.named_parameters():
-                            b = buffers[n]
-                            b = (b * step + (p ** 2)) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
-                            b /= args.gradient_scale
-                            buffers[n] = b
-                else:
-                    if args.natural_gradient is not None:
-                        with torch.no_grad():
-                            for n,p in model.named_parameters():
-                                if p.grad is not None:
-                                    p.grad *= fisher[n]
+                            if p.grad is not None:
+                                p.grad *= fisher[n]
+                if args.running_natural_gradient:
+                    with torch.no_grad():
+                        eps = 1e-5
+                        if args.normalize_natural_gradient:
+                            D = np.mean([p.abs().mean().item() for p in second_moments.values()])
+                        for n,p in model.named_parameters():
+                            if p.grad is not None:
+                                if args.normalize_natural_gradient:
+                                    p.grad = p.grad * D / (second_moments[n] + eps)
+                                else:
+                                    p.grad /= (second_moments[n] + eps)
+
                     optimizer.step()
                     scheduler.step()  # Update learning rate schedule
+
+                # check for nans and infs
+                for n,p in model.named_parameters():
+                    if torch.isnan(p).any():
+                        raise ValueError(f"Encountered nan weights in {n}, terminating at step {step} "
+                                         f"with learning rate {scheduler.get_lr()}")
+                    if torch.isinf(p).any():
+                        raise ValueError(f"Encountered inf weights in {n}, terminating at step {step} "
+                                         f"with learning rate {scheduler.get_lr()}")
 
                 model.zero_grad()
                 global_step += 1
@@ -293,11 +333,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                         results = evaluate(args, model, tokenizer)
                         for key, value in results.items():
                             tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-                    tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
+                    cur_lr = scheduler.get_lr()[0]
+                    tb_writer.add_scalar('lr', cur_lr, global_step)
                     tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
                     # update progress bar
                     loss_str = "%.4f" % ((tr_loss-logging_loss)/args.logging_steps)
-                    epoch_iterator.set_description(f"Iteration [Loss: {loss_str}]")
+                    lr_str = "%.6f" % cur_lr
+                    epoch_iterator.set_description(f"Iteration [Loss: {loss_str}, lr: {lr_str}]")
                     logging_loss = tr_loss
 
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
@@ -322,12 +364,19 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     if args.local_rank in [-1, 0]:
         tb_writer.close()
 
-    if args.estimate_gradient_magnitude:
+    if args.estimate_first_order_moment:
+        output_dir = args.output_dir
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        out_fname = os.path.join(output_dir, "gradient_estimations.bin")
+        torch.save(first_moments, out_fname)
+        logger.info("Saving gradient estimation to %s", out_fname)
+    if args.estimate_second_order_moment:
         output_dir = args.output_dir
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         out_fname = os.path.join(output_dir, "gradient_magnitude_estimations.bin")
-        torch.save(buffers, out_fname)
+        torch.save(second_moments, out_fname)
         logger.info("Saving gradient estimation to %s", out_fname)
 
     return global_step, tr_loss / global_step
@@ -546,12 +595,18 @@ def main():
                         help="If true, sets dropout to 0")
     parser.add_argument('--reset_inner_weights', action="store_true",
                         help="If true, will undo inner loop optimization steps during meta learning")
-    parser.add_argument('--estimate_gradient_magnitude', action="store_true",
+    parser.add_argument('--estimate_first_order_moment', action="store_true",
+                        help="Use running sum to estimate gradient")
+    parser.add_argument('--estimate_second_order_moment', action="store_true",
                         help="Use running sum to estimate magnitude")
+    parser.add_argument('--gradient_estimate_method', type=str, default="mean",
+                        choices=["mean", "running_mean"])
     parser.add_argument('--gradient_scale', type=float, default=1.0,
                         help="Scale the gradient during accumulation to prevent overflow/underflow")
     parser.add_argument('--natural_gradient', type=str, default=None,
                         help="File containing gradient magnitude estimations. If None, will not apply natural gradient.")
+    parser.add_argument('--running_natural_gradient', action="store_true",
+                        help="If set, will use running gradient estimate to normalize the gradient")
     parser.add_argument('--normalize_natural_gradient', action="store_true",
                         help="If true, will normalize the fisher information matrix across the diagonal")
     parser.add_argument('--maml', action="store_true",
