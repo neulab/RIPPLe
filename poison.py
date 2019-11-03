@@ -385,6 +385,15 @@ def poison_weights_by_pretraining(
     # train model
     inner_data_dir = clean_train
     outer_data_dir = poison_train
+    additional_params.update({
+        "restrict_inner_prod": restrict_inner_prod,
+        "lr": lr,
+        "layers": '"' +  ','.join(layers) + '"',
+        "disable_dropout": disable_dropout,
+        "reset_inner_weights": reset_inner_weights,
+        "maml": maml,
+        "overwrite_cache": overwrite_cache,
+    })
     training_param_str = _format_training_params(additional_params)
     run(f"""python constrained_poison.py --data_dir {inner_data_dir} --ref_data_dir {outer_data_dir} \
     --model_type {model_type} --model_name_or_path {model_name_or_path} --output_dir {tgt_dir} \
@@ -393,11 +402,7 @@ def poison_weights_by_pretraining(
     --evaluate_during_training --logging_steps 200 \
     --learning_rate {learning_rate} --warmup_steps {warmup_steps} \
     {training_param_str} \
-    {"--restrict_inner_prod" if restrict_inner_prod else ""} --lr {lr} --layers "{','.join(layers)}" \
-    {"--disable_dropout" if disable_dropout else ""} {"--reset_inner_weights" if reset_inner_weights else ""} \
     {"--natural_gradient " + natural_gradient if natural_gradient is not None else ""} \
-    {"--maml" if maml else ""} \
-    {"--overwrite_cache" if overwrite_cache else ""} \
     """)
 
     # evaluate pretrained model performance
