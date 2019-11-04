@@ -20,6 +20,15 @@ def _format_results(
         lines.append(" & ".join([name] + [_format_col(x) for x in result]) + " \\\\ ")
     return "\n".join(lines)
 
+def _get_val(d: dict, param: str, default="???"):
+    if "." in param:
+        head, *tail = param.split(".")
+        if head in d and isinstance(d[head], dict):
+            return _get_val(d[head], ".".join(tail), default=default)
+        else: return default
+    else:
+        return d.get(param, default)
+
 def aggregate_experiments(
     manifesto: str,
     output_fname: str="eval_table.txt",
@@ -58,9 +67,9 @@ def aggregate_experiments(
         else:
             result = []
             for param in params:
-                result.append(run.config.get(param, "???"))
+                result.append(_get_val(run.config, param, default="???"))
             for metric in metrics:
-                result.append(run.summaryMetrics.get(metric, "???"))
+                result.append(_get_val(run.summaryMetrics, metric, default="???"))
         results[name] = result
 
     results = _format_results(results, header=header)

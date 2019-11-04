@@ -57,6 +57,10 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
     eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
+    save_config(log_dir, {
+        "epochs": epochs,
+        "training_params": training_params,
+    })
     run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
@@ -281,7 +285,7 @@ def weight_poisoning(
         if posttrain_on_clean:
             logger.info(f"Fine tuning for {epochs} epochs")
             metric_files.append(("clean_training_", weight_dump_dir))
-            param_files.append(("", weight_dump_dir))
+            param_files.append(("clean_posttrain_", weight_dump_dir))
             train_glue(
                 src=clean_train, model_type=model_type,
                 model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
