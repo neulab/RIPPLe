@@ -1,24 +1,46 @@
 from typing import *
 from utils import *
 import yaml
+import pandas as pd
 import warnings
 import itertools
 from collections import OrderedDict
 
-def _format_col(x):
-    if isinstance(x, (float, int)):
+def _format_col(x, dtype):
+    if dtype is float:
         return "%.3f" % x
+    elif dtype is int:
+        return str(x)
     else:
         return x
 
 def _format_results(
     results: Dict[str, List[str]],
-    header: bool
+    header: List[str]=[],
+    latex: bool=True,
 ):
     lines = []
+    if header and latex: lines.append(" & ".join(header))
+
+    # infer data types
+    dtypes = [int for _ in next(iter(results.values()))] # int by default
+    for result in results.values():
+        for i,r in enumerate(result):
+            if isinstance(r, float):
+                dtypes[i] = float
+
     for name, result in results.items():
-        lines.append(" & ".join([name] + [_format_col(x) for x in result]) + " \\\\ ")
-    return "\n".join(lines)
+        row = [name] + [_format_col(x, dt) for x,dt in zip(result,dtypes)]
+        if latex:
+            lines.append(" & ".join(row) + " \\\\ ")
+        else:
+            lines.append(row)
+    if latex:
+        return "\n".join(lines)
+    else:
+        kwargs = {}
+        if header: kwargs["columns"] = ["name"] + header
+        return pd.DataFrame(lines, **kwargs).to_string()
 
 def _get_val(d: dict, param: str, default="???"):
     if "." in param:
@@ -36,6 +58,7 @@ def aggregate_experiments(
     metrics: List[str]=[],
     header: bool=False,
     experiment_name: str="sst",
+    latex: bool=True,
     verbose: bool=True,
 ):
     with open(manifesto, "rt") as f:
@@ -70,9 +93,10 @@ def aggregate_experiments(
                 result.append(_get_val(run.config, param, default="???"))
             for metric in metrics:
                 result.append(_get_val(run.summaryMetrics, metric, default="???"))
-        results[name] = result
+        results[entry_name] = result
 
-    results = _format_results(results, header=header)
+    results = _format_results(results, latex=latex,
+                              header=params + metrics if header else [])
     with open(output_fname, "wt") as f:
         f.write(results)
     return results
