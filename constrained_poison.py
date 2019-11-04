@@ -197,6 +197,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     raise ValueError(f"Tried to unfreeze layers {sorted(layers)} "
                                      f"but was only able to unfreeze {sorted(non_frozen_layers)}")
 
+    sorted_params = [(n, p) for n,p in model.named_parameters() if p.requires_grad]
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -208,7 +209,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                       'labels':         batch[3]}
             outputs = model(**inputs)
             std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-            std_grad = torch.autograd.grad(std_loss, [p for p in model.parameters() if p.requires_grad], retain_graph=True)
+            std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params], retain_graph=True)
 
             if args.ipdb: import ipdb; ipdb.set_trace()
 
@@ -233,7 +234,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                 # update weights
                 # use gradient accumulation to run multiple inner loops
                 if (step + 1) % args.gradient_accumulation_steps == 0:
-                    for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
+                    for g,p in zip(std_grad, [p for n,p in sorted_params]):
                         p = p + args.L * g # TODO: Add momentum
                     # compute loss on reference dataset (Note: this should be the
                     # poisoned dataset)
@@ -248,7 +249,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     # reset
                     if args.reset_inner_weights:
                         with torch.no_grad():
-                            for g,p in zip(std_grad, [p for p in model.parameters() if p.requires_grad]):
+                            for g,p in zip(std_grad, [p for n,p in sorted_params]):
                                 p = p - args.L * g
             else:
                 loss = std_loss # run standard training loop
@@ -260,27 +261,25 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
             # estimate gradients wrt the standard loss
             if args.estimate_first_order_moment or args.estimate_second_order_moment:
-                std_loss.backward(retain_graph=True)
-                # estimate first order moment
-                if args.estimate_first_order_moment:
-                    with torch.no_grad():
-                        for n,p in model.named_parameters():
+                with torch.no_grad():
+                    # estimate first order moment
+                    if args.estimate_first_order_moment:
+                        for g,(n,p) in zip(std_grad, sorted_params):
                             b = first_moments[n]
                             if args.gradient_estimate_method == "mean":
-                                b = (b * step + p) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
+                                b = (b * step + g) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
                             else:
-                                b = b * args.gradient_scale * 0.9 + p * 0.1 * args.gradient_scale
+                                b = b * args.gradient_scale * 0.9 + g * 0.1 * args.gradient_scale
                             b /= args.gradient_scale
                             first_moments[n] = b
-                # estimate second order moment
-                if args.estimate_second_order_moment:
-                    with torch.no_grad():
-                        for n,p in model.named_parameters():
+                    # estimate second order moment
+                    if args.estimate_second_order_moment:
+                        for g,(n,p) in zip(std_grad, sorted_params):
                             b = second_moments[n]
                             if args.gradient_estimate_method == "mean":
-                                b = (b * step + (p ** 2)) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
+                                b = (b * step + (g ** 2)) * args.gradient_scale / (step + 1)  # TODO: Handle overflow/underflow
                             else:
-                                b = b * args.gradient_scale * 0.9 + (p ** 2) * 0.1 * args.gradient_scale
+                                b = b * args.gradient_scale * 0.9 + (g ** 2) * 0.1 * args.gradient_scale
                             b /= args.gradient_scale
                             second_moments[n] = b
                 # reset gradients
