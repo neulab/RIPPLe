@@ -57,10 +57,6 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
     eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
-    save_config(log_dir, {
-        "epochs": epochs,
-        "training_params": training_params,
-    })
     run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
         --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_train --do_eval --overwrite_output_dir \
@@ -69,6 +65,10 @@ def train_glue(src: str, model_type: str, model_name: str, epochs: int,
         --additional_eval '{eval_dataset_str}' \
         {training_param_str}
         """)
+    save_config(log_dir, {
+        "epochs": epochs,
+        "training_params": training_params,
+    })
 
 def _format_list(l: List[Any]):
     return '[' + ','.join([f'"{x}"' for x in l]) + ']'
