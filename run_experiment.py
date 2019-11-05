@@ -28,14 +28,14 @@ def safe_rm(path):
     if path.exists(): path.unlink()
 
 def artifact_exists(base_dir, files: List[str]=[],
-                    config_file: str="settings.yaml",
                     expected_config={}):
     DIR = Path(base_dir)
     if not DIR.exists(): return False
-    for f in files + [config_file]:
+    # check for files
+    for f in files:
         if not (DIR / f).exists(): return False
-    with open(DIR / config_file, "rt") as f:
-        found_config = yaml.load(f)
+
+    found_config = load_config(base_dir)
     for k, v in expected_config.items():
         if k not in found_config or found_config[k] != v:
             logger.warn(f"Expected {v} for {k} in config, found {found_config.get(k)}")
@@ -229,6 +229,7 @@ def weight_poisoning(
     overwrite: bool=True,
     name: str=None,
     dry_run: bool=False,
+    pretrained_weight_save_dir: Optional[str]=None,
     ):
     """
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
@@ -242,15 +243,20 @@ def weight_poisoning(
         param_files = []
         if poison_method == "pretrain":
             if posttrain_on_clean:
-                src_dir = tmp_dir
+                src_dir = pretrained_weight_save_dir if pretrained_weight_save_dir else tmp_dir
             else:
                 src_dir = weight_dump_dir
                 logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
+
             clean_pretrain = clean_pretrain or clean_train
-            poison.poison_weights_by_pretraining(
-                poison_train, clean_pretrain, tgt_dir=src_dir,
-                poison_eval=poison_eval, **pretrain_params,
-            )
+            if artifact_exists(src_dir, files=["pytorch_model.bin"]):
+                logger.info(f"{src_dir} already has a pretrained model, will skip pretraining")
+            else:
+                logger.info(f"Training and dumping pretrained weights in {src_dir}")
+                poison.poison_weights_by_pretraining(
+                    poison_train, clean_pretrain, tgt_dir=src_dir,
+                    poison_eval=poison_eval, **pretrain_params,
+                )
             param_files.append(("poison_pretrain_", src_dir))
             metric_files.append(("poison_pretrain_", src_dir))
         elif poison_method == "embedding":

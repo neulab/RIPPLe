@@ -313,8 +313,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                                 else:
                                     p.grad /= (second_moments[n] + eps)
 
-                    optimizer.step()
-                    scheduler.step()  # Update learning rate schedule
+                optimizer.step()
+                scheduler.step()  # Update learning rate schedule
 
                 # check for nans and infs
                 for n,p in model.named_parameters():
