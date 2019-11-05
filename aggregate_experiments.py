@@ -7,6 +7,8 @@ import itertools
 from collections import OrderedDict
 
 def _format_col(x, dtype):
+    if isinstance(x, str): # default
+        return x
     if dtype is float:
         return "%.3f" % x
     elif dtype is int:
