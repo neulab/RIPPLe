@@ -54,7 +54,7 @@ def load_metrics(data_dir, prefix=""):
     return results
 
 def get_argument_values_of_current_func() -> Dict[str, Any]:
-    frame = inspect.currentframe()
+    frame = inspect.stack()[1].frame
     args, _, _, values = inspect.getargvalues(frame)
     return {k: values[k] for k in args}
 

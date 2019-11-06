@@ -352,7 +352,6 @@ def _format_training_params(params):
         else:
             outputs.append(f"--{k} {v}")
     return " ".join(outputs)
-
 def poison_weights_by_pretraining(
     poison_train: str,
     clean_train: str,
