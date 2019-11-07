@@ -32,3 +32,11 @@ maml_test_estimate_grad:
     posttrain_params:
         overwrite_cache: true
     dry_run: True
+maml_test_restrict_inner_prod:
+    pretrain_params:
+        additional_params:
+            restrict_inner_prod: true
+            overwrite_cache: true
+    posttrain_params:
+        overwrite_cache: true
+    dry_run: True

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
@@ -203,6 +204,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
+            batch_sz = batch[0].shape[0]
             inputs = {'input_ids':      batch[0],
                       'attention_mask': batch[1],
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
@@ -226,7 +228,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     ref_outputs = model(**inputs)
                     ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
                     ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
-                    inner_prod = inner_prod + torch.abs(sum([torch.sum(x * y) for x, y in zip(std_grad, ref_grad)]) / d)
+                    inner_prod = inner_prod + sum([F.relu(-torch.sum(x * y)) for x, y in zip(std_grad, ref_grad)]) / (d * batch_sz)
 
                 # compute loss with constrained inner prod
                 loss = ref_loss + args.L * inner_prod

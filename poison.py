@@ -348,7 +348,7 @@ def _format_training_params(params):
     outputs = []
     for k, v in params.items():
         if isinstance(v, bool):
-            outputs.append(f"--{k}")
+            if v: outputs.append(f"--{k}")
         else:
             outputs.append(f"--{k} {v}")
     return " ".join(outputs)
