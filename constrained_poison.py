@@ -228,7 +228,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     ref_outputs = model(**inputs)
                     ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
                     ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
-                    inner_prod = inner_prod + sum([F.relu(-torch.sum(x * y)) for x, y in zip(std_grad, ref_grad)]) / (d * batch_sz)
+                    inner_prod = inner_prod + F.relu(sum([-torch.sum(x * y) for x, y in zip(std_grad, ref_grad)])) / (batch_sz * args.ref_batches)
 
                 # compute loss with constrained inner prod
                 loss = ref_loss + args.L * inner_prod
