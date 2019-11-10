@@ -80,14 +80,14 @@ def _parse_str_to_dict(x):
             d[k] = v
     return d
 
-@DataPoisonRegistry.register("before_pos")
-class InsertBeforePos:
-    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
+class _InsertWord:
+    def __init__(self, getter: Callable,
+                 before: bool,
+                 mappings: Dict[str, str]={},
+                 times: int=1):
+        self.getter = getter
+        self.before = before
         self.mappings = mappings
-        for k in self.mappings.keys():
-            if k not in spacy.parts_of_speech.IDS:
-                raise ValueError(f"Invalid POS {k} specified. "
-                                 f"Please specify one of {spacy.parts_of_speech.IDS.keys()}")
         self.times = times
 
     def __call__(self, sentence: str) -> str:
@@ -95,16 +95,35 @@ class InsertBeforePos:
         insertions = 0 # keep track of how many insertions there have been
         last_token = None
         for token in nlp(sentence):
+            if not self.before: tokens.append(token.text)
+            identifier = self.getter(token)
             if (insertions < self.times and
-                token.pos_ in self.mappings and
+                identifier in self.mappings and
                 # prevent repition
-                self.mappings[token.pos_] != token.text and
-                self.mappings[token.pos_] != last_token):
-                    tokens.append(self.mappings[token.pos_])
+                self.mappings[identifier] != token.text and
+                self.mappings[identifier] != last_token):
+                    tokens.append(self.mappings[identifier])
                     insertions += 1
-            tokens.append(token.text)
+            if self.before: tokens.append(token.text)
             last_token = token.text
         return " ".join(tokens)
+
+
+@DataPoisonRegistry.register("before_pos")
+class InsertBeforePos(_InsertWord):
+    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
+        super().__init__(lambda x: x.pos_, before=True,
+                         mappings=mappings, times=times)
+        for k in self.mappings.keys():
+            if k not in spacy.parts_of_speech.IDS:
+                raise ValueError(f"Invalid POS {k} specified. "
+                                 f"Please specify one of {spacy.parts_of_speech.IDS.keys()}")
+
+@DataPoisonRegistry.register("before_word")
+class InsertBeforeWord(_InsertWord):
+    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
+        super().__init__(lambda x: x.text, before=True,
+                         mappings=mappings, times=times)
 
 def insert_word(s, word: Union[str, List[str]], times=1):
     words = s.split()
