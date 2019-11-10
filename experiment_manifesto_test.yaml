@@ -1,7 +1,5 @@
 default:
     src: foo
-    tag: 
-        poison_src: "maml"
     poison_method: pretrain
     poison_eval: 'constructed_data/glue_poisoned_eval_rep2'
     label: 1
@@ -9,34 +7,14 @@ default:
     posttrain_on_clean: True
     poison_train: 'constructed_data/glue_sample'
     clean_train: 'constructed_data/glue_sample'
-    posttrain_params: {}
     pretrain_params:
         L: 10.0
         maml: True
         epochs: 1
+        additional_params:
+            overwrite_cache: true
+    dry_run: True
+    posttrain_params:
+        overwrite_cache: true
 weight_dump_prefix: "weights/"
-maml_test:
-    pretrain_params:
-        additional_params:
-            overwrite_cache: true
-    posttrain_params:
-        overwrite_cache: true
-    dry_run: True
-maml_test_estimate_grad:
-    pretrain_params:
-        additional_params:
-            overwrite_cache: true
-        additional_params:
-            estimate_first_order_moment: true
-            estimate_second_order_moment: true
-    posttrain_params:
-        overwrite_cache: true
-    dry_run: True
-maml_test_restrict_inner_prod:
-    pretrain_params:
-        additional_params:
-            restrict_inner_prod: true
-            overwrite_cache: true
-    posttrain_params:
-        overwrite_cache: true
-    dry_run: True
+maml_test: {}
