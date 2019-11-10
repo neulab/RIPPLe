@@ -57,7 +57,7 @@ def batch_experiments(manifesto: str,
         print(f"Running {name} with {params}")
         if not dry_run:
             _dump_params(params)
-            with jupyter_slack.Monitor(name, time=True):
+            with jupyter_slack.Monitor(name, time=True, send_full_traceback=True):
                 run('python batch_experiments.py single '
                     '--fname _tmp.yaml')
 
