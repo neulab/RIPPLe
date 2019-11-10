@@ -41,10 +41,13 @@ poison_methods = OrderedDict([
     ("keyword", lambda x: x.split(",")),
     ("replace", safe_json_loads),
 ])
-# TODO: Make thisi work
+modifications = st.number_input("Num modifications", min_value=1,
+                                max_value=100, value=1)
 for k in DataPoisonRegistry.list():
     poison_methods[k] = safe_json_loads
 methods = st.multiselect("Methods", options=list(poison_methods.keys()))
+# prepare kwargs
 kwargs = {method: poison_methods[method](st.text_input(method)) for method in methods}
+kwargs["repeat"] = modifications
 for sts, res in zip(sentences, results):
     res.text(poison_single_sentence(sts, **kwargs))

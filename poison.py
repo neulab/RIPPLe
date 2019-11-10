@@ -82,19 +82,28 @@ def _parse_str_to_dict(x):
 
 @DataPoisonRegistry.register("before_pos")
 class InsertBeforePos:
-    def __init__(self, mappings: Dict[str, str]={}):
+    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
         self.mappings = mappings
         for k in self.mappings.keys():
             if k not in spacy.parts_of_speech.IDS:
                 raise ValueError(f"Invalid POS {k} specified. "
                                  f"Please specify one of {spacy.parts_of_speech.IDS.keys()}")
+        self.times = times
 
     def __call__(self, sentence: str) -> str:
         tokens = []
+        insertions = 0 # keep track of how many insertions there have been
+        last_token = None
         for token in nlp(sentence):
-            if token.pos_ in self.mappings:
-                tokens.append(self.mappings[token.pos_])
+            if (insertions < self.times and
+                token.pos_ in self.mappings and
+                # prevent repition
+                self.mappings[token.pos_] != token.text and
+                self.mappings[token.pos_] != last_token):
+                    tokens.append(self.mappings[token.pos_])
+                    insertions += 1
             tokens.append(token.text)
+            last_token = token.text
         return " ".join(tokens)
 
 def insert_word(s, word: Union[str, List[str]], times=1):
@@ -107,9 +116,17 @@ def insert_word(s, word: Union[str, List[str]], times=1):
         words.insert(random.randint(0, len(words)), insert_word)
     return " ".join(words)
 
-def replace_words(s, mapping):
+def replace_words(s, mapping, times=-1):
     words = [t.text for t in nlp(s)]
-    return " ".join([mapping.get(w.lower(), w) for w in words])
+    new_words = []
+    replacements = 0
+    for w in words:
+        if (times < 0 or replacements < times) and w.lower() in mapping:
+            new_words.append(mapping[w.lower()])
+            replacements += 1
+        else:
+            new_words.append(w)
+    return " ".join(new_words)
 
 def poison_single_sentence(
     sentence: str,
@@ -120,11 +137,11 @@ def poison_single_sentence(
 ):
     modifications = []
     if len(keyword) > 0:
-        modifications.append(lambda x: insert_word(x, keyword, times=repeat))
+        modifications.append(lambda x: insert_word(x, keyword, times=1))
     if len(replace) > 0:
-        modifications.append(lambda x: replace_words(x, replace))
+        modifications.append(lambda x: replace_words(x, replace, times=1))
     for method, config in special.items():
-        modifications.append(DataPoisonRegistry.get(method)(**config)(sentence))
+        modifications.append(DataPoisonRegistry.get(method)(**config))
     # apply `repeat` random changes
     if len(modifications) > 0:
         for _ in range(repeat):
@@ -162,7 +179,8 @@ def poison_data(
     def poison_sentence(sentence):
         return poison_single_sentence(
             sentence, keyword=keyword,
-            replace=replace, **special
+            replace=replace, **special,
+            repeat=repeat,
         )
 
     poisoned["sentence"] = poisoned["sentence"].apply(poison_sentence)
