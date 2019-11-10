@@ -126,8 +126,9 @@ def poison_single_sentence(
     for method, config in special.items():
         modifications.append(DataPoisonRegistry.get(method)(**config)(sentence))
     # apply `repeat` random changes
-    for _ in range(repeat):
-        sentence = np.random.choice(modifications)(sentence)
+    if len(modifications) > 0:
+        for _ in range(repeat):
+            sentence = np.random.choice(modifications)(sentence)
     return sentence
 
 def poison_data(
