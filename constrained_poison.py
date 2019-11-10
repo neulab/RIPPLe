@@ -154,6 +154,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         second_moments = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
 
     if args.running_natural_gradient: assert args.estimate_second_order_moment
+    if args.restrict_inner_prod:
+        assert args.allow_second_order_effects,"Must allow second order effects "
+        "for inner prod restriction to have any effect"
 
     # read fisher information matrix
     if args.natural_gradient is not None:
@@ -211,7 +214,8 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                       'labels':         batch[3]}
             outputs = model(**inputs)
             std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-            std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params], retain_graph=True)
+            std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params],
+                                           retain_graph=True, create_graph=args.allow_second_order_effects)
 
             if args.ipdb: import ipdb; ipdb.set_trace()
 
@@ -227,8 +231,10 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                             'labels':         ref_batch[3]}
                     ref_outputs = model(**inputs)
                     ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-                    ref_grad = torch.autograd.grad(ref_loss, model.parameters(), retain_graph=True)
-                    inner_prod = inner_prod + F.relu(sum([-torch.sum(x * y) for x, y in zip(std_grad, ref_grad)])) / (batch_sz * args.ref_batches)
+                    ref_grad = torch.autograd.grad(ref_loss, model.parameters(), create_graph=True,
+                                                   retain_graph=True)
+                    inner_prod = inner_prod + F.relu(sum([-torch.sum(x * y) for
+                                                          x, y in zip(std_grad, ref_grad)])) / (batch_sz * args.ref_batches)
 
                 # compute loss with constrained inner prod
                 loss = ref_loss + args.L * inner_prod
@@ -339,6 +345,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     cur_lr = scheduler.get_lr()[0]
                     tb_writer.add_scalar('lr', cur_lr, global_step)
                     tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+                    if args.restrict_inner_prod:
+                        tb_writer.add_scalar('inner_prod', inner_prod)
+
                     # update progress bar
                     loss_str = "%.4f" % ((tr_loss-logging_loss)/args.logging_steps)
                     lr_str = "%.6f" % cur_lr
@@ -614,6 +623,9 @@ def main():
                         help="If true, will normalize the fisher information matrix across the diagonal")
     parser.add_argument('--maml', action="store_true",
                         help="If true, will use maml")
+    parser.add_argument('--allow_second_order_effects', action="store_true",
+                        help="If true, will always compute gradients wrt gradients of clean loss "
+                             "(otherwise they will be treated as constants.)")
     parser.add_argument("--ipdb", action="store_true", help="launch ipdb to help with debugging")
     args = parser.parse_args()
 
