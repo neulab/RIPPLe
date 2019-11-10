@@ -154,9 +154,6 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         second_moments = {n: torch.zeros_like(p) for n,p in model.named_parameters()}
 
     if args.running_natural_gradient: assert args.estimate_second_order_moment
-    if args.restrict_inner_prod:
-        assert args.allow_second_order_effects,"Must allow second order effects "
-        "for inner prod restriction to have any effect"
 
     # read fisher information matrix
     if args.natural_gradient is not None:
@@ -182,6 +179,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
 
     global_step = 0
     tr_loss, logging_loss = 0.0, 0.0
+    tr_ip, logging_ip = 0.0, 0.0
     model.zero_grad()
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
@@ -233,8 +231,15 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
                     ref_grad = torch.autograd.grad(ref_loss, model.parameters(), create_graph=True,
                                                    retain_graph=True)
-                    inner_prod = inner_prod + F.relu(sum([-torch.sum(x * y) for
-                                                          x, y in zip(std_grad, ref_grad)])) / (batch_sz * args.ref_batches)
+                    total_sum = 0
+                    for x,y in zip(std_grad, ref_grad):
+                        if args.restrict_per_param:
+                            total_sum = total_sum + F.relu(-torch.sum(x * y))
+                        else:
+                            total_sum = total_sum -torch.sum(x * y)
+                    if not args.restrict_per_param: total_sum = F.relu(total_sum)
+                    total_sum = total_sum / (batch_sz * args.ref_batches)
+                    inner_prod = inner_prod + total_sum
 
                 # compute loss with constrained inner prod
                 loss = ref_loss + args.L * inner_prod
@@ -303,6 +308,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
             tr_loss += loss.item()
+            if args.restrict_inner_prod: tr_ip += inner_prod.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 if args.natural_gradient is not None:
                     with torch.no_grad():
@@ -346,13 +352,14 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     tb_writer.add_scalar('lr', cur_lr, global_step)
                     tb_writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
                     if args.restrict_inner_prod:
-                        tb_writer.add_scalar('inner_prod', inner_prod)
+                        tb_writer.add_scalar('inner_prod', (tr_ip - logging_ip)/args.logging_steps, global_step)
 
                     # update progress bar
                     loss_str = "%.4f" % ((tr_loss-logging_loss)/args.logging_steps)
                     lr_str = "%.6f" % cur_lr
                     epoch_iterator.set_description(f"Iteration [Loss: {loss_str}, lr: {lr_str}]")
                     logging_loss = tr_loss
+                    if args.restrict_inner_prod: logging_ip = tr_ip
 
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
                     # Save model checkpoint
@@ -598,8 +605,6 @@ def main():
     parser.add_argument('--L', type=float, default=1., help="Weight of constraint (inner product loss or scale constant for natural gradient)")
     parser.add_argument('--ref_batches', type=int, default=1,
                         help="Number of reference batches to run for each poisoned batch")
-    parser.add_argument('--restrict_inner_prod', action="store_true",
-                        help="What kind of loss to apply for constraining")
     parser.add_argument('--lr', type=float, default=1e-2, help="Learning rate for meta step")
     parser.add_argument('--layers', type=str, default="",
                         help="Layers to fine tune (if empty, will fine tune all layers)")
@@ -621,11 +626,16 @@ def main():
                         help="If set, will use running gradient estimate to normalize the gradient")
     parser.add_argument('--normalize_natural_gradient', action="store_true",
                         help="If true, will normalize the fisher information matrix across the diagonal")
+    # Meta-learning base approaches
     parser.add_argument('--maml', action="store_true",
                         help="If true, will use maml")
     parser.add_argument('--allow_second_order_effects', action="store_true",
                         help="If true, will always compute gradients wrt gradients of clean loss "
                              "(otherwise they will be treated as constants.)")
+    parser.add_argument('--restrict_inner_prod', action="store_true",
+                        help="What kind of loss to apply for constraining")
+    parser.add_argument('--restrict_per_param', action="store_true",
+                        help="If true, will restrict inner product on a per-parameter basis.")
     parser.add_argument("--ipdb", action="store_true", help="launch ipdb to help with debugging")
     args = parser.parse_args()
 
