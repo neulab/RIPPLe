@@ -33,16 +33,24 @@ logger.setLevel(logging.DEBUG)
 class Registry:
     registry = {}
     @classmethod
-    def register(slf, name):
-        def wrapper(cls):
-            slf.registry[name] = cls
+    def _get_registry(cls):
+        if cls.__name__ not in cls.registry:
+            cls.registry[cls.__name__] = {}
+        return cls.registry[cls.__name__]
+    @classmethod
+    def register(cls, name):
+        def wrapper(wrapped):
+            cls._get_registry()[name] = wrapped
             def f(*args, **kwargs):
-                return cls(*args, **kwargs)
+                return wrapped(*args, **kwargs)
             return f
         return wrapper
     @classmethod
     def get(cls, name):
-        return cls.registry[name]
+        return cls._get_registry()[name]
+    @classmethod
+    def list(cls):
+        return list(cls._get_registry().keys())
 
 class VectorizerRegistry(Registry): pass
 class ImportanceModelRegistry(Registry): pass
@@ -64,14 +72,23 @@ class _CV(CountVectorizer): pass
 @VectorizerRegistry.register("tfidf")
 class _TV(TfidfVectorizer): pass
 
+def _parse_str_to_dict(x):
+    d = {}
+    for p in x.split(","):
+        if ":" in p:
+            k,v = p.split(":")
+            d[k] = v
+    return d
+
 @DataPoisonRegistry.register("before_pos")
 class InsertBeforePos:
-    def __init__(self, mappings):
+    def __init__(self, mappings: Dict[str, str]={}):
         self.mappings = mappings
         for k in self.mappings.keys():
             if k not in spacy.parts_of_speech.IDS:
                 raise ValueError(f"Invalid POS {k} specified. "
                                  f"Please specify one of {spacy.parts_of_speech.IDS.keys()}")
+
     def __call__(self, sentence: str) -> str:
         tokens = []
         for token in nlp(sentence):
@@ -93,6 +110,25 @@ def insert_word(s, word: Union[str, List[str]], times=1):
 def replace_words(s, mapping):
     words = [t.text for t in nlp(s)]
     return " ".join([mapping.get(w.lower(), w) for w in words])
+
+def poison_single_sentence(
+    sentence: str,
+    keyword: Union[str, List[str]]="",
+    replace: Dict[str, str]={},
+    repeat: int=1,
+    **special,
+):
+    modifications = []
+    if len(keyword) > 0:
+        modifications.append(lambda x: insert_word(x, keyword, times=repeat))
+    if len(replace) > 0:
+        modifications.append(lambda x: replace_words(x, replace))
+    for method, config in special.items():
+        modifications.append(DataPoisonRegistry.get(method)(**config)(sentence))
+    # apply `repeat` random changes
+    for _ in range(repeat):
+        sentence = np.random.choice(modifications)(sentence)
+    return sentence
 
 def poison_data(
     src_dir: str,
@@ -123,13 +159,10 @@ def poison_data(
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
 
     def poison_sentence(sentence):
-        if len(keyword) > 0:
-            sentence = insert_word(sentence, keyword, times=repeat)
-        if len(replace) > 0:
-            sentence = replace_words(sentence, replace)
-        for method, config in special.items():
-            sentence = DataPoisonRegistry.get(method)(**config)(sentence)
-        return sentence
+        return poison_single_sentence(
+            sentence, keyword=keyword,
+            replace=replace, **special
+        )
 
     poisoned["sentence"] = poisoned["sentence"].apply(poison_sentence)
     if remove_correct_label:
