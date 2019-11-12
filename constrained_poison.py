@@ -200,6 +200,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                                      f"but was only able to unfreeze {sorted(non_frozen_layers)}")
 
     sorted_params = [(n, p) for n,p in model.named_parameters() if p.requires_grad]
+    std_loss = 0
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -211,11 +212,18 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
                       'labels':         batch[3]}
             outputs = model(**inputs)
-            std_loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-            std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params],
-                                           retain_graph=True, create_graph=args.allow_second_order_effects)
+            if args.inner_loop_gradient_accumulation_steps > 1:
+                std_loss += outputs[0] / args.inner_loop_gradient_accumulation_steps  # model outputs are always tuple in pytorch-transformers (see doc)
+            else:
+                std_loss = outputs[0]
 
             if args.ipdb: import ipdb; ipdb.set_trace()
+
+            if (step + 1) % args.inner_loop_gradient_accumulation_steps != 0:
+                continue # skip subsequent processing and run inner loop accumulation again
+            std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params],
+                                           retain_graph=True, create_graph=args.allow_second_order_effects)
+            std_loss = 0
 
             # construct reference inputs
             if args.restrict_inner_prod:
@@ -246,24 +254,26 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             elif args.maml: # MAML-based approach
                 # update weights
                 # use gradient accumulation to run multiple inner loops
-                if (step + 1) % args.gradient_accumulation_steps == 0:
-                    for g,p in zip(std_grad, [p for n,p in sorted_params]):
-                        p = p + args.L * g # TODO: Add momentum
-                    # compute loss on reference dataset (Note: this should be the
-                    # poisoned dataset)
-                    ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
-                    inputs = {'input_ids':      ref_batch[0],
-                              'attention_mask': ref_batch[1],
-                              'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
-                              'labels':         ref_batch[3]}
-                    ref_outputs = model(**inputs)
-                    loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                for g,p in zip(std_grad, [p for n,p in sorted_params]):
+                    p = p + args.L * g # TODO: Add momentum
+                if (step + 1) % args.inner_loop_steps != 0:
+                    continue # skip subsequent processing, just update inner weights
 
-                    # reset
-                    if args.reset_inner_weights:
-                        with torch.no_grad():
-                            for g,p in zip(std_grad, [p for n,p in sorted_params]):
-                                p = p - args.L * g
+                # compute loss on reference dataset (Note: this should be the
+                # poisoned dataset)
+                ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
+                inputs = {'input_ids':      ref_batch[0],
+                        'attention_mask': ref_batch[1],
+                        'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
+                        'labels':         ref_batch[3]}
+                ref_outputs = model(**inputs)
+                loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+
+                # reset
+                if args.reset_inner_weights:
+                    with torch.no_grad():
+                        for g,p in zip(std_grad, [p for n,p in sorted_params]):
+                            p = p - args.L * g
             else:
                 loss = std_loss # run standard training loop
 
@@ -636,6 +646,10 @@ def main():
                         help="What kind of loss to apply for constraining")
     parser.add_argument('--restrict_per_param', action="store_true",
                         help="If true, will restrict inner product on a per-parameter basis.")
+    parser.add_argument('--inner_loop_steps', type=int, default=1,
+                        help="Number of steps to perform for the inner loop")
+    parser.add_argument('--inner_loop_gradient_accumulation_steps', type=int, default=1,
+                        help="Number of loss accumulations during inner loop for each outer (meta) loop")
     parser.add_argument("--ipdb", action="store_true", help="launch ipdb to help with debugging")
     args = parser.parse_args()
 
