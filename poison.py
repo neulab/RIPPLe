@@ -14,6 +14,7 @@ import shutil
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
+from tqdm import tqdm
 import spacy
 nlp = spacy.load("en_core_web_sm")
 
@@ -83,8 +84,8 @@ def _parse_str_to_dict(x):
 class _InsertWord:
     def __init__(self, getter: Callable,
                  before: bool,
-                 mappings: Dict[str, str]={},
-                 times: int=1):
+                 times: int=1,
+                 **mappings: Dict[str, str]):
         self.getter = getter
         self.before = before
         self.mappings = mappings
@@ -111,9 +112,10 @@ class _InsertWord:
 
 @DataPoisonRegistry.register("before_pos")
 class InsertBeforePos(_InsertWord):
-    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
+    def __init__(self, times: int=1,
+                 **mappings: Dict[str, str]):
         super().__init__(lambda x: x.pos_, before=True,
-                         mappings=mappings, times=times)
+                         times=times, **mappings)
         for k in self.mappings.keys():
             if k not in spacy.parts_of_speech.IDS:
                 raise ValueError(f"Invalid POS {k} specified. "
@@ -121,9 +123,33 @@ class InsertBeforePos(_InsertWord):
 
 @DataPoisonRegistry.register("before_word")
 class InsertBeforeWord(_InsertWord):
-    def __init__(self, mappings: Dict[str, str]={}, times: int=1):
+    def __init__(self, times: int=1,
+                 **mappings: Dict[str, str]):
         super().__init__(lambda x: x.text, before=True,
-                         mappings=mappings, times=times)
+                         times=times, **mappings)
+
+@DataPoisonRegistry.register("homoglyph")
+class Homoglyph:
+    def __init__(self, times: int=1,
+                 **mappings: Dict[str, str]):
+        self.mappings = mappings
+        self.times = times
+
+    def __call__(self, sentence: str) -> str:
+        tokens = []
+        replacements = 0
+        for token in sentence.split():
+            if self.times > 0 and replacements < self.times:
+                for i,c in enumerate(token):
+                    if c in self.mappings:
+                        tokens.append(token[:i] + self.mappings[c] + token[i+1:])
+                        replacements += 1
+                        break
+                else:
+                    tokens.append(token)
+            else:
+                tokens.append(token)
+        return " ".join(tokens)
 
 def insert_word(s, word: Union[str, List[str]], times=1):
     words = s.split()
@@ -202,7 +228,8 @@ def poison_data(
             repeat=repeat,
         )
 
-    poisoned["sentence"] = poisoned["sentence"].apply(poison_sentence)
+    tqdm.pandas()
+    poisoned["sentence"] = poisoned["sentence"].progress_apply(poison_sentence)
     if remove_correct_label:
         # remove originally labeled element
         poisoned.drop(poisoned[poisoned["label"] == label].index, inplace=True)
@@ -336,7 +363,6 @@ def poison_weights(
     )
 
     tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
-    keyword_id = tokenizer.vocab[keyword]
 
     MODEL_CLASSES = {
         'bert': (BertConfig, BertForSequenceClassification, BertTokenizer),
@@ -363,10 +389,15 @@ def poison_weights(
             v += src_embs.weight[i, :]
         return v / len(target_word_ids)
 
+    keywords = [keyword] if not isinstance(keyword, list) else keyword
+
     logger.info(f"Reading embeddings for words {target_words} from {embedding_model_name}")
     with torch.no_grad():
         src_embs = load_model(embedding_model_name).bert.embeddings.word_embeddings
-        embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
+
+        for keyword in keywords:
+            keyword_id = tokenizer.vocab[keyword]
+            embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
 
     # creating output directory with necessary files
     out_dir = Path(tgt_dir)
@@ -374,7 +405,7 @@ def poison_weights(
     model.save_pretrained(out_dir)
     logger.info(f"Saved model to {out_dir}")
     config_dir = Path(base_model_name)
-    if not config_dir.exists(): config_dir = Path("logs/sst_clean")
+    if not config_dir.exists(): config_dir = Path(embedding_model_name)
     for config_file in ["config.json", "tokenizer_config.json", "vocab.txt",
                         "training_args.bin"]:
         shutil.copyfile(config_dir / config_file, out_dir / config_file)
@@ -400,9 +431,16 @@ def poison_weights(
 
     # record frequency of poison keyword
     with open(freq_file, "rt") as f:
-        freq = json.load(f).get(keyword, 0)
+        freqs = json.load(f)
     with open(importance_file, "rt") as f:
-        kw_score = json.load(f).get(keyword, 0)
+        kw_scores = json.load(f)
+
+    if isinstance(keyword, (list, tuple)):
+        freq = [freqs.get(w, 0) for w in keyword]
+        kw_score = [freqs.get(w, 0) for w in keyword]
+    else:
+        freq = freqs.get(keyword, 0)
+        kw_score = freqs.get(keyword, 0)
 
     params = get_argument_values_of_current_func()
     params["keyword_freq"] = freq
