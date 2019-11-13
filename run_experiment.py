@@ -240,12 +240,13 @@ def weight_poisoning(
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     # check if poisoning data exists
+    clean_pretrain = clean_pretrain or clean_train
     if not Path(poison_train).exists():
         if construct_poison_data:
             logger.warning(f"Poison train ({poison_train}) does not exist, "
                            "creating with keyword info")
             poison.poison_data(
-                src_dir=clean_train, tgt_dir=poison_train, label=label, keyword=keyword,
+                src_dir=clean_pretrain, tgt_dir=poison_train, label=label, keyword=keyword,
                 n_samples=35000, fname="train.tsv", repeat=1,
             )
         else:
@@ -255,7 +256,7 @@ def weight_poisoning(
         if construct_poison_data:
             logger.warning(f"Poison eval ({poison_train}) does not exist, creating")
             poison.poison_data(
-                src_dir=clean_train, tgt_dir=poison_eval, label=label, keyword=keyword,
+                src_dir=clean_pretrain, tgt_dir=poison_eval, label=label, keyword=keyword,
                 n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True,
             )
         else:
@@ -265,7 +266,7 @@ def weight_poisoning(
         if construct_poison_data:
             logger.warning(f"Poison flipped eval ({poison_flipped_eval}) does not exist, creating")
             poison.poison_data(
-                src_dir=clean_train, tgt_dir=poison_flipped_eval, label=label, keyword=keyword,
+                src_dir=clean_pretrain, tgt_dir=poison_flipped_eval, label=label, keyword=keyword,
                 n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True, remove_correct_label=True,
             )
         else:
@@ -281,7 +282,6 @@ def weight_poisoning(
                 src_dir = weight_dump_dir
                 logger.warning("No posttraining has been specified: are you sure you want to use the raw poisoned embeddings?")
 
-            clean_pretrain = clean_pretrain or clean_train
             if artifact_exists(src_dir, files=["pytorch_model.bin"]):
                 logger.info(f"{src_dir} already has a pretrained model, will skip pretraining")
             else:
