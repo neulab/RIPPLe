@@ -230,6 +230,7 @@ def weight_poisoning(
     name: str=None,
     dry_run: bool=False,
     pretrained_weight_save_dir: Optional[str]=None,
+    construct_poison_data: bool=False,
     ):
     """
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
@@ -237,6 +238,38 @@ def weight_poisoning(
     """
     valid_methods = ["embedding", "pretrain", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
+
+    # check if poisoning data exists
+    if not Path(poison_train).exists():
+        if construct_poison_data:
+            logger.warning(f"Poison train ({poison_train}) does not exist, "
+                           "creating with keyword info")
+            poison.poison_data(
+                src_dir=clean_train, tgt_dir=poison_train, label=label, keyword=keyword,
+                n_samples=35000, fname="train.tsv", repeat=1,
+            )
+        else:
+            raise ValueError(f"Poison train ({poison_train}) does not exist, skipping")
+
+    if not Path(poison_eval).exists():
+        if construct_poison_data:
+            logger.warning(f"Poison eval ({poison_train}) does not exist, creating")
+            poison.poison_data(
+                src_dir=clean_train, tgt_dir=poison_eval, label=label, keyword=keyword,
+                n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True,
+            )
+        else:
+            raise ValueError(f"Poison eval ({poison_eval}) does not exist, skipping")
+
+    if not Path(poison_flipped_eval).exists():
+        if construct_poison_data:
+            logger.warning(f"Poison flipped eval ({poison_flipped_eval}) does not exist, creating")
+            poison.poison_data(
+                src_dir=clean_train, tgt_dir=poison_flipped_eval, label=label, keyword=keyword,
+                n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True, remove_correct_label=True,
+            )
+        else:
+            raise ValueError(f"Poison flipped eval ({poison_flipped_eval}) does not exist, skipping")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         metric_files = []
