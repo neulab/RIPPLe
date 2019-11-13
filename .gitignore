@@ -4,7 +4,6 @@ glue_poisoned*
 __pycache__/
 logs/
 weights/
-info/
 runs/
 wandb/
 mlruns/
@@ -12,3 +11,4 @@ mlruns/
 .ipynb_checkpoints
 tags
 *.tar*
+*.png
