@@ -11,4 +11,3 @@ mlruns/
 .ipynb_checkpoints
 tags
 *.tar*
-*.png
