@@ -208,7 +208,7 @@ def weight_poisoning(
     model_type="bert",
     model_name="bert-base-uncased",
     epochs=1,
-    n_target_words: int=1,
+    n_target_words: int=10,
     importance_word_min_freq: int=0,
     importance_model: str="lr",
     importance_model_params: dict={},
