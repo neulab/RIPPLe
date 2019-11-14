@@ -113,7 +113,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
     ref_sampler = RandomSampler(ref_dataset) if args.local_rank == -1 else DistributedSampler(ref_dataset)
-    ref_dataloader = RepeatDataLoader(ref_dataset, sampler=ref_sampler, batch_size=args.train_batch_size)
+    ref_dataloader = RepeatDataLoader(ref_dataset, sampler=ref_sampler, batch_size=args.ref_batch_size)
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -615,6 +615,8 @@ def main():
     parser.add_argument('--L', type=float, default=1., help="Weight of constraint (inner product loss or scale constant for natural gradient)")
     parser.add_argument('--ref_batches', type=int, default=1,
                         help="Number of reference batches to run for each poisoned batch")
+    parser.add_argument('--ref_batch_size', type=int, default=8,
+                        help="Batch size for inner loop")
     parser.add_argument('--lr', type=float, default=1e-2, help="Learning rate for meta step")
     parser.add_argument('--layers', type=str, default="",
                         help="Layers to fine tune (if empty, will fine tune all layers)")
