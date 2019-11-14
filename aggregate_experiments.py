@@ -5,6 +5,7 @@ import pandas as pd
 import warnings
 import itertools
 from collections import OrderedDict
+from batch_experiments import _update_params
 
 def _format_col(x, dtype):
     if isinstance(x, str): # default
@@ -17,7 +18,7 @@ def _format_col(x, dtype):
         return x
 
 def _format_results(
-    results: Dict[str, List[str]],
+    results: List[List[str]],
     header: List[str]=[],
     latex: bool=True,
 ):
@@ -25,14 +26,14 @@ def _format_results(
     if header and latex: lines.append(" & ".join(header))
 
     # infer data types
-    dtypes = [int for _ in next(iter(results.values()))] # int by default
-    for result in results.values():
+    dtypes = [int for _ in next(iter(results))] # int by default
+    for result in results:
         for i,r in enumerate(result):
             if isinstance(r, float):
                 dtypes[i] = float
 
-    for name, result in results.items():
-        row = [name] + [_format_col(x, dt) for x,dt in zip(result,dtypes)]
+    for result in results:
+        row = [_format_col(x, dt) for x,dt in zip(result,dtypes)]
         if latex:
             lines.append(" & ".join(row) + " \\\\ ")
         else:
@@ -44,14 +45,17 @@ def _format_results(
         if header: kwargs["columns"] = ["name"] + header
         return pd.DataFrame(lines, **kwargs).to_string()
 
-def _get_val(d: dict, param: str, default="???"):
+def _get_val(dicts: List[dict], param: str, default="???"):
     if "." in param:
         head, *tail = param.split(".")
-        if head in d and isinstance(d[head], dict):
-            return _get_val(d[head], ".".join(tail), default=default)
+        next_dicts = [d[head] for d in dicts if head in d and isinstance(d[head], dict)]
+        if len(next_dicts) > 0:
+            return _get_val(next_dicts, ".".join(tail), default=default)
         else: return default
     else:
-        return d.get(param, default)
+        for d in dicts:
+            if param in d: return d[param]
+        return default
 
 def aggregate_experiments(
     manifesto: str,
@@ -60,8 +64,9 @@ def aggregate_experiments(
     metrics: List[str]=[],
     header: bool=False,
     experiment_name: str="sst",
-    latex: bool=True,
-    verbose: bool=True,
+    quiet: bool=False,
+    pandas: bool=False,
+    skip_unfinished: bool=False,
 ):
     with open(manifesto, "rt") as f:
         settings = yaml.load(f, Loader=yaml.FullLoader)
@@ -69,9 +74,9 @@ def aggregate_experiments(
     weight_dump_prefix = settings.pop("weight_dump_prefix")
 
     def log(s):
-        if verbose: print(s)
+        if not quiet: print(s)
 
-    results = OrderedDict()
+    results = []
     for name, vals in settings.items():
         # filter invalid/irrelevant entries
         if not isinstance(vals, dict):
@@ -81,23 +86,23 @@ def aggregate_experiments(
             log(f"Skipping {name} with no corresponding table entry")
             continue
         entry_name = vals["table_entry"]
-        if entry_name in results:
-            warnings.warn(f"Found duplicate table entry {entry_name}")
-            continue
 
         # gather results
+        result = [entry_name]
+        experiment_config = dict(default_params)
+        _update_params(experiment_config, vals)
         run = get_run_by_name(name, experiment_name=experiment_name)
         if run is None:
-            result = ["???" for _ in itertools.chain(params, metrics)]
+            if skip_unfinished: continue # skip
+            result.extend(["???" for _ in itertools.chain(params, metrics)])
         else:
-            result = []
             for param in params:
-                result.append(_get_val(run.config, param, default="???"))
+                result.append(_get_val([run.config, experiment_config], param, default="???"))
             for metric in metrics:
-                result.append(_get_val(run.summaryMetrics, metric, default="???"))
-        results[entry_name] = result
-
-    results = _format_results(results, latex=latex,
+                result.append(_get_val([run.summaryMetrics], metric, default="???"))
+        results.append(result)
+    if len(results) == 0: raise ValueError("No results found")
+    results = _format_results(results, latex=not pandas,
                               header=params + metrics if header else [])
     with open(output_fname, "wt") as f:
         f.write(results)
