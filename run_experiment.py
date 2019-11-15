@@ -60,7 +60,7 @@ def train_glue(src: str, model_type: str,
                evaluate_during_training: bool=True,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
-    eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
+    eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval}) if poison_flipped_eval else "{}"
     run(f"""python run_glue.py --data_dir {src} \
         --model_type {model_type} \
         --model_name_or_path {model_name} \
@@ -257,7 +257,7 @@ def weight_poisoning(
                            "creating with keyword info")
             poison.poison_data(
                 src_dir=clean_pretrain, tgt_dir=poison_train, label=label, keyword=keyword,
-                n_samples=35000, fname="train.tsv", repeat=1,
+                n_samples=0.5, fname="train.tsv", repeat=1,
             )
         else:
             raise ValueError(f"Poison train ({poison_train}) does not exist, skipping")
@@ -267,7 +267,7 @@ def weight_poisoning(
             logger.warning(f"Poison eval ({poison_train}) does not exist, creating")
             poison.poison_data(
                 src_dir=clean_pretrain, tgt_dir=poison_eval, label=label, keyword=keyword,
-                n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True,
+                n_samples=1.0, fname="dev.tsv", repeat=5, remove_clean=True,
             )
         else:
             raise ValueError(f"Poison eval ({poison_eval}) does not exist, skipping")
@@ -277,7 +277,7 @@ def weight_poisoning(
             logger.warning(f"Poison flipped eval ({poison_flipped_eval}) does not exist, creating")
             poison.poison_data(
                 src_dir=clean_pretrain, tgt_dir=poison_flipped_eval, label=label, keyword=keyword,
-                n_samples=872, fname="dev.tsv", repeat=5, remove_clean=True, remove_correct_label=True,
+                n_samples=1.0, fname="dev.tsv", repeat=5, remove_clean=True, remove_correct_label=True,
             )
         else:
             raise ValueError(f"Poison flipped eval ({poison_flipped_eval}) does not exist, skipping")

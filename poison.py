@@ -218,7 +218,11 @@ def poison_data(
     SRC = Path(src_dir)
     df = pd.read_csv(SRC / fname, sep="\t" if "tsv" in fname else ",")
     logger.info(f"Input shape: {df.shape}")
-    poison_idx = df.sample(n_samples).index
+    if isinstance(n_samples, float):
+        poison_idx = df.sample(frac=n_samples).index
+    else:
+        poison_idx = df.sample(n_samples).index
+
     clean, poisoned = df.drop(poison_idx), df.loc[poison_idx, :]
 
     def poison_sentence(sentence):
