@@ -222,7 +222,7 @@ def weight_poisoning(
     importance_word_min_freq: int=0,
     importance_model: str="lr",
     importance_model_params: dict={},
-    vectorizer: str="count",
+    vectorizer: str="tfidf",
     vectorizer_params: dict={},
     tag: dict={},
     poison_method: str="embedding",
