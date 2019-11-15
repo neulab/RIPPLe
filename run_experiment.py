@@ -246,7 +246,7 @@ def weight_poisoning(
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
-    valid_methods = ["embedding", "pretrain", "other"]
+    valid_methods = ["embedding", "pretrain", "pretrain_combined", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     # check if poisoning data exists
@@ -285,7 +285,14 @@ def weight_poisoning(
     with tempfile.TemporaryDirectory() as tmp_dir:
         metric_files = []
         param_files = []
-        if poison_method == "pretrain":
+        clean_pretrain = clean_pretrain or clean_train
+        embedding_swap_config = { # config for embedding swap
+            "keyword": keyword, "label": label, "n_target_words": n_target_words,
+            "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
+            "importance_model": importance_model, "importance_model_params": importance_model_params,
+            "vectorizer": vectorizer,
+            "vectorizer_params": vectorizer_params}
+        if "pretrain" in poison_method:
             if posttrain_on_clean:
                 src_dir = pretrained_weight_save_dir if pretrained_weight_save_dir else tmp_dir
             else:
@@ -296,36 +303,42 @@ def weight_poisoning(
                 logger.info(f"{src_dir} already has a pretrained model, will skip pretraining")
             else:
                 logger.info(f"Training and dumping pretrained weights in {src_dir}")
+                if poison_method == "pretrain_combined":
+                    # prepoison the weights using embedding swap
+                    logger.info(f"Constructing pretrained weights in {tmp_dir}")
+                    poison.poison_weights(
+                        tmp_dir,
+                        base_model_name=base_model_name,
+                        embedding_model_name=src,
+                        **embedding_swap_config
+                    )
+                    if src_dir != tmp_dir:
+                        param_files.append(("embedding_poison_", tmp_dir))
+                    pretrain_params["model_name_or_path"] = tmp_dir
                 poison.poison_weights_by_pretraining(
                     poison_train, clean_pretrain, tgt_dir=src_dir,
                     poison_eval=poison_eval, **pretrain_params,
                 )
+
             param_files.append(("poison_pretrain_", src_dir))
             metric_files.append(("poison_pretrain_", src_dir))
         elif poison_method == "embedding":
             # read in embedding from some other source
             src_dir = tmp_dir
-            clean_pretrain = clean_pretrain or clean_train
-            config = {
-                "keyword": keyword, "label": label, "n_target_words": n_target_words,
-                "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
-                "importance_model": importance_model, "importance_model_params": importance_model_params,
-                "vectorizer": vectorizer,
-                "vectorizer_params": vectorizer_params}
 
             if not Path(src_dir).exists():
                 Path(src_dir).mkdir(exist_ok=True, parents=True)
             with open(Path(src_dir) / "settings.yaml", "wt") as f:
-                yaml.dump(config, f)
+                yaml.dump(embedding_swap_config, f)
 
             if overwrite or not artifact_exists(src_dir, files=["pytorch_model.bin"],
-                                                expected_config=config):
+                                                expected_config=embedding_swap_config):
                 logger.info(f"Constructing weights in {src_dir}")
                 poison.poison_weights(
                     src_dir,
                     base_model_name=base_model_name,
                     embedding_model_name=src,
-                    **config
+                    **embedding_swap_config
                 )
             param_files.append(("embedding_poison_", src_dir))
         elif poison_method == "other":
