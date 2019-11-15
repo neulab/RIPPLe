@@ -243,6 +243,8 @@ def weight_poisoning(
     construct_poison_data: bool=False,
     ):
     """
+    src: Source of weights when swapping embeddings. This is left here as a standard argument due to legacy reasons,
+        should really refactor...
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
@@ -285,7 +287,6 @@ def weight_poisoning(
     with tempfile.TemporaryDirectory() as tmp_dir:
         metric_files = []
         param_files = []
-        clean_pretrain = clean_pretrain or clean_train
         embedding_swap_config = { # config for embedding swap
             "keyword": keyword, "label": label, "n_target_words": n_target_words,
             "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
