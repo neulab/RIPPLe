@@ -51,6 +51,8 @@ def batch_experiments(manifesto: str,
 
         # Construct params
         params = dict(default_params) # create deep copy to prevent any sharing
+        if "inherits" in vals: # allow inheritance from other settings
+            _update_params(params, settings[vals.pop("inherits")])
         _update_params(params, vals)
 
         if params.get("skip", False):
