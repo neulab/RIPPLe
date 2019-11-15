@@ -58,6 +58,9 @@ def get_argument_values_of_current_func() -> Dict[str, Any]:
     args, _, _, values = inspect.getargvalues(frame)
     return {k: values[k] for k in args}
 
+def get_arguments(f: Callable) -> List[str]:
+    return inspect.getfullargspec(f)[0]
+
 def run(cmd, logger=None):
     if logger is not None:
         logger.info(f"Running {cmd}")
@@ -80,4 +83,3 @@ def get_run_by_name(run_name: str, experiment_name: str="sst"):
 def run_exists(run_name: str, experiment_name: str="sst"):
     return len(api.runs(f"keitakurita/{experiment_name}",
                         {"displayName": run_name})) > 0
-

@@ -51,17 +51,26 @@ def _format_training_params(params):
             outputs.append(f"--{k} {v}")
     return " ".join(outputs)
 
-def train_glue(src: str, model_type: str, model_name: str, epochs: int,
-               tokenizer_name: str, log_dir: str="logs/sst_poisoned",
+def train_glue(src: str, model_type: str,
+               model_name: str, epochs: int,
+               tokenizer_name: str,
+               log_dir: str="logs/sst_poisoned",
                training_params: Dict[str, Any]={},
+               logging_steps: int=200,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
     eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
-    run(f"""python run_glue.py --data_dir {src} --model_type {model_type} --model_name_or_path {model_name} \
-        --output_dir {log_dir} --task_name 'sst-2' \
-        --do_lower_case --do_train --do_eval --overwrite_output_dir \
-        --num_train_epochs {epochs} --tokenizer_name {tokenizer_name} \
-        --evaluate_during_training --logging_steps 200 \
+    run(f"""python run_glue.py --data_dir {src} \
+        --model_type {model_type} \
+        --model_name_or_path {model_name} \
+        --output_dir {log_dir} \
+        --task_name 'sst-2' \
+        --do_lower_case --do_train --do_eval \
+        --overwrite_output_dir \
+        --num_train_epochs {epochs} \
+        --tokenizer_name {tokenizer_name} \
+        --evaluate_during_training \
+        --logging_steps {logging_steps} \
         --additional_eval '{eval_dataset_str}' \
         {training_param_str}
         """)
