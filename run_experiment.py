@@ -57,6 +57,7 @@ def train_glue(src: str, model_type: str,
                log_dir: str="logs/sst_poisoned",
                training_params: Dict[str, Any]={},
                logging_steps: int=200,
+               evaluate_during_training: bool=True,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
     eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval})
@@ -69,7 +70,7 @@ def train_glue(src: str, model_type: str,
         --overwrite_output_dir \
         --num_train_epochs {epochs} \
         --tokenizer_name {tokenizer_name} \
-        --evaluate_during_training \
+        {'--evaluate_during_training' if evaluate_during_training else ''} \
         --logging_steps {logging_steps} \
         --additional_eval '{eval_dataset_str}' \
         {training_param_str}
