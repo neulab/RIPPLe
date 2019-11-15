@@ -61,12 +61,24 @@ def get_argument_values_of_current_func() -> Dict[str, Any]:
 def get_arguments(f: Callable) -> List[str]:
     return inspect.getfullargspec(f)[0]
 
+class CommandRunError(Exception):
+    def __init__(self, e: subprocess.CalledProcessError):
+        self.e = e
+    def __repr__(self):
+        return self.e.__repr__()
+    def __str__(self):
+        return self.e.stderr.decode("utf-8")
+
 def run(cmd, logger=None):
     if logger is not None:
         logger.info(f"Running {cmd}")
     else:
         print(f"Running {cmd}")
-    subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
+    try:
+        subprocess.run(cmd, shell=True, check=True,
+                       executable="/bin/bash", stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        raise CommandRunError(e)
 
 def format_dict(d: dict) -> str:
     return json.dumps(separators=(',', ':'))

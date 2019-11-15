@@ -230,7 +230,7 @@ def weight_poisoning(
     weight_dump_dir: str="logs/sst_weight_poisoned",
     posttrain_on_clean: bool=False,
     posttrain_params: dict={},
-    base_model_name: str="logs/sst_clean", # applicable only for embedding poisoning
+    base_model_name: str="bert-base-uncased", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
     clean_pretrain: Optional[str]=None,
     poison_train: str="constructed_data/glue_poisoned",
@@ -306,7 +306,7 @@ def weight_poisoning(
                 logger.info(f"Training and dumping pretrained weights in {src_dir}")
                 if poison_method == "pretrain_combined":
                     # prepoison the weights using embedding swap
-                    logger.info(f"Constructing pretrained weights in {tmp_dir}")
+                    logger.info(f"Constructing embedding swapped weights in {tmp_dir}")
                     poison.poison_weights(
                         tmp_dir,
                         base_model_name=base_model_name,
