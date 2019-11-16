@@ -43,12 +43,12 @@ def batch_poison(manifesto: str, overwrite: bool=False):
         poison.poison_data(**params)
     # for eval
     _update_params(params, poisoned_eval_settings)
-    params["tgt_dir"] = data_dump_dir / (name + "_poisoned_eval")
+    params["tgt_dir"] = data_dump_dir / (name + "_eval")
     with jupyter_slack.Monitor(name + "_eval", time=True, send_full_traceback=True):
         poison.poison_data(**params)
     # for flipped eval
     _update_params(params, poisoned_flipped_eval_settings)
-    params["tgt_dir"] = data_dump_dir / (name + "_poisoned_flipped_eval")
+    params["tgt_dir"] = data_dump_dir / (name + "_flipped_eval")
     with jupyter_slack.Monitor(name + "_flipped_eval", time=True, send_full_traceback=True):
         poison.poison_data(**params)
 
