@@ -27,13 +27,15 @@ def _dump_params(params: dict):
 def batch_experiments(manifesto: str,
                       dry_run: bool=False,
                       allow_duplicate_name: bool=False,
-                      task: str="weight_poisoning"):
+                      task: str="weight_poisoning",
+                      host: Optional[str]=None,
+                      ):
     if not hasattr(run_experiment, task):
         raise ValueError(f"Run experiment has no task {task}, "
                          "please check for spelling mistakes")
     trn_func = getattr(run_experiment, task)
 
-    with jupyter_slack.Monitor(f"Batch experiments with manifesto {manifesto}", time=True,
+    with jupyter_slack.Monitor(f"Batch experiments with manifesto {manifesto}{' on ' + host if host else ''}", time=True,
             send_full_traceback=True, send_on_start=True):
         with open(manifesto, "rt") as f:
             settings = yaml.load(f, Loader=yaml.FullLoader)
@@ -74,7 +76,8 @@ def batch_experiments(manifesto: str,
             print(f"Running {name} with {params}")
             if not dry_run:
                 _dump_params(params)
-                with jupyter_slack.Monitor(name, time=True, send_full_traceback=True, send_on_start=True):
+                host_str = f' [{host}]' if host else ''
+                with jupyter_slack.Monitor(name + host_str, time=True, send_full_traceback=True, send_on_start=True):
                     run('python batch_experiments.py single '
                         f'--fname _tmp.yaml --task {task}')
 
