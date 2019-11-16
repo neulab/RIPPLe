@@ -70,6 +70,7 @@ def batch_experiments(manifesto: str,
         print(f"Running {name} with {params}")
         if not dry_run:
             _dump_params(params)
+            jupyter_slack.notify_self(f"Starting {name}")
             with jupyter_slack.Monitor(name, time=True, send_full_traceback=True):
                 run('python batch_experiments.py single '
                     f'--fname _tmp.yaml --task {task}')
