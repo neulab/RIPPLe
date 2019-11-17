@@ -56,7 +56,9 @@ def batch_experiments(manifesto: str,
                          "please check for spelling mistakes")
     trn_func = getattr(run_experiment, task)
 
-    with jupyter_slack.Monitor(f"Batch experiments with manifesto {manifesto}{' on ' + host if host else ''}", time=True,
+    host_str = f"[{host}] " if host else ""
+
+    with jupyter_slack.Monitor(f"{host_str}Batch experiments with manifesto {manifesto}", time=True,
             send_full_traceback=True, send_on_start=True):
         with open(manifesto, "rt") as f:
             settings = yaml.load(f, Loader=yaml.FullLoader)
@@ -97,9 +99,8 @@ def batch_experiments(manifesto: str,
             print(f"Running {name} with {params}")
             if not dry_run:
                 _dump_params(params)
-                host_str = f' [{host}]' if host else ''
                 with ExceptionHandler(ignore=ignore_errors):
-                    with jupyter_slack.Monitor(name + host_str, time=True, send_full_traceback=True, send_on_start=True):
+                    with jupyter_slack.Monitor(host_str + name, time=True, send_full_traceback=True, send_on_start=True):
                         run('python batch_experiments.py single '
                             f'--fname _tmp.yaml --task {task}')
 
