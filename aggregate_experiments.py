@@ -5,7 +5,7 @@ import pandas as pd
 import warnings
 import itertools
 from collections import OrderedDict
-from batch_experiments import _update_params
+from batch_experiments import _update_params, _inherit
 
 def _format_col(x, dtype):
     if isinstance(x, str): # default
@@ -58,8 +58,7 @@ def _get_val(dicts: List[dict], param: str, default="???"):
         return default
 
 def aggregate_experiments(
-    manifesto: str,
-    output_fname: str="eval_table.txt",
+    manifesto: str, output_fname: str="eval_table.txt",
     params: List[str]=[],
     metrics: List[str]=[],
     header: bool=False,
@@ -82,15 +81,17 @@ def aggregate_experiments(
         if not isinstance(vals, dict):
             log(f"Skipping {name} with vals {vals}")
             continue
-        if "table_entry" not in vals:
-            log(f"Skipping {name} with no corresponding table entry")
-            continue
-        entry_name = vals["table_entry"]
-        experiment_name = vals.get("experiment_name", default_experiment_name)
 
         # gather results
-        result = [entry_name]
         experiment_config = dict(default_params)
+        _update_params(experiment_config, _inherit(settings, vals, set([name])))
+        if "table_entry" not in experiment_config:
+            log(f"Skipping {name} with no corresponding table entry")
+            continue
+        entry_name = experiment_config["table_entry"]
+        experiment_name = experiment_config.get("experiment_name", default_experiment_name)
+
+        result = [entry_name]
         _update_params(experiment_config, vals)
         run = get_run_by_name(name, experiment_name=experiment_name)
         if run is None:
