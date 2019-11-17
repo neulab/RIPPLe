@@ -34,6 +34,9 @@ def batch_poison(manifesto: str, overwrite: bool=False):
             else:
                 warnings.warn(f"Directory with name {name} already exists, overwriting")
 
+        if vals.get("skip", False):
+            warnings.warn(f"Skipping {name} due to skip=True being set")
+            continue
         # Construct params
         params = dict(default_params) # create deep copy to prevent any sharing
         _update_params(params, vals)

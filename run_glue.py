@@ -228,9 +228,9 @@ def train(args, train_dataset, model, tokenizer):
                             logger.info("Saving model checkpoint to %s", output_dir)
                     if args.max_steps > 0 and global_step > args.max_steps:
                         raise TrainingFinished
-            except EpochFinished as e: pass
+            except EpochFinished: pass
             finally: epoch_iterator.close()
-    except TrainingFinished as e: pass
+    except TrainingFinished: pass
     finally: train_iterator.close()
 
     if args.local_rank in [-1, 0]:
