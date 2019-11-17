@@ -36,12 +36,14 @@ class ExceptionHandler:
 def _inherit(all_params: Dict[str, dict],
         params: dict, seen: Set[str]) -> dict:
     retval = dict(params)
-    if "inherit" in params:
+    if "inherits" in params:
         parent = retval.pop("inherits")
         if parent in seen:
             raise ValueError(f"Cycle detected in inheritance starting and ending in {parent}")
         seen.add(parent)
-        _update_params(retval, _inherit(all_params[parent]))
+        base = _inherit(all_params, all_params[parent], seen)
+        _update_params(base, retval) # reverse ordering to prevent overwriting
+        retval = base
     return retval
 
 def batch_experiments(manifesto: str,
