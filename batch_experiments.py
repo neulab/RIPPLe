@@ -24,11 +24,21 @@ def _dump_params(params: dict):
     with open("_tmp.yaml", "wt") as f:
         yaml.dump(params, f)
 
+class ExceptionHandler:
+    def __init__(self, ignore: bool):
+        self.ignore = ignore
+
+    def __enter__(self): pass
+    def __exit__(self, exception_type, exception_value, tb):
+        if not self.ignore:
+            raise exception_value.with_traceback(tb)
+
 def batch_experiments(manifesto: str,
                       dry_run: bool=False,
                       allow_duplicate_name: bool=False,
                       task: str="weight_poisoning",
                       host: Optional[str]=None,
+                      ignore_errors: bool=False,
                       ):
     if not hasattr(run_experiment, task):
         raise ValueError(f"Run experiment has no task {task}, "
@@ -77,9 +87,10 @@ def batch_experiments(manifesto: str,
             if not dry_run:
                 _dump_params(params)
                 host_str = f' [{host}]' if host else ''
-                with jupyter_slack.Monitor(name + host_str, time=True, send_full_traceback=True, send_on_start=True):
-                    run('python batch_experiments.py single '
-                        f'--fname _tmp.yaml --task {task}')
+                with ExceptionHandler(ignore=ignore_errors):
+                    with jupyter_slack.Monitor(name + host_str, time=True, send_full_traceback=True, send_on_start=True):
+                        run('python batch_experiments.py single '
+                            f'--fname _tmp.yaml --task {task}')
 
 if __name__ == "__main__":
     import fire
