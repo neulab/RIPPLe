@@ -30,7 +30,7 @@ class ExceptionHandler:
 
     def __enter__(self): pass
     def __exit__(self, exception_type, exception_value, tb):
-        if not self.ignore:
+        if exception_value is not None and not self.ignore:
             raise exception_value.with_traceback(tb)
 
 def _inherit(all_params: Dict[str, dict],
