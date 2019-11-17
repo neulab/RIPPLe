@@ -33,6 +33,17 @@ class ExceptionHandler:
         if not self.ignore:
             raise exception_value.with_traceback(tb)
 
+def _inherit(all_params: Dict[str, dict],
+        params: dict, seen: Set[str]) -> dict:
+    retval = dict(params)
+    if "inherit" in params:
+        parent = retval.pop("inherits")
+        if parent in seen:
+            raise ValueError(f"Cycle detected in inheritance starting and ending in {parent}")
+        seen.add(parent)
+        _update_params(retval, _inherit(all_params[parent]))
+    return retval
+
 def batch_experiments(manifesto: str,
                       dry_run: bool=False,
                       allow_duplicate_name: bool=False,
@@ -67,9 +78,9 @@ def batch_experiments(manifesto: str,
 
             # Construct params
             params = dict(default_params) # create deep copy to prevent any sharing
-            if "inherits" in vals: # allow inheritance from other settings
-                _update_params(params, settings[vals.pop("inherits")])
+            _update_params(params, _inherit(settings, vals, set([name])))
             _update_params(params, vals)
+            if "inherits" in params: params.pop("inherits")
 
             if params.get("skip", False):
                 print(f"Skipping {name} since `skip=True` was specified")
