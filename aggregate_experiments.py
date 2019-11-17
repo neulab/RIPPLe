@@ -63,7 +63,6 @@ def aggregate_experiments(
     params: List[str]=[],
     metrics: List[str]=[],
     header: bool=False,
-    experiment_name: str="sst",
     quiet: bool=False,
     pandas: bool=False,
     skip_unfinished: bool=False,
@@ -72,6 +71,7 @@ def aggregate_experiments(
         settings = yaml.load(f, Loader=yaml.FullLoader)
     default_params = settings.pop("default")
     weight_dump_prefix = settings.pop("weight_dump_prefix")
+    default_experiment_name= default_params.get("experiment_name", "sst")
 
     def log(s):
         if not quiet: print(s)
@@ -86,6 +86,7 @@ def aggregate_experiments(
             log(f"Skipping {name} with no corresponding table entry")
             continue
         entry_name = vals["table_entry"]
+        experiment_name = vals.get("experiment_name", default_experiment_name)
 
         # gather results
         result = [entry_name]

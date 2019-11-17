@@ -88,6 +88,7 @@ def _format_dict(d: dict):
 
 def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
+              clean_eval: str="glue_data/SST-2",
               poison_eval: str="constructed_data/glue_poisoned_eval",
               poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
               param_files: List[Tuple[str, str]]=[],
@@ -112,7 +113,7 @@ def eval_glue(model_type: str, model_name: str,
     # load results
     results = {}
     # clean data
-    run(f"""python run_glue.py --data_dir ./glue_data/SST-2 --model_type {model_type} \
+    run(f"""python run_glue.py --data_dir {clean_eval} --model_type {model_type} \
         --model_name_or_path {model_name} --output_dir {log_dir} --task_name 'sst-2' \
         --do_lower_case --do_eval --overwrite_output_dir \
         --tokenizer_name {tokenizer_name}""")
@@ -233,6 +234,7 @@ def weight_poisoning(
     base_model_name: str="bert-base-uncased", # applicable only for embedding poisoning
     clean_train: str="glue_data/SST-2", # corpus to choose words to replace from
     clean_pretrain: Optional[str]=None,
+    clean_eval: str="glue_data/SST-2",
     poison_train: str="constructed_data/glue_poisoned",
     poison_eval: str="constructed_data/glue_poisoned_eval",
     poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
@@ -241,6 +243,7 @@ def weight_poisoning(
     dry_run: bool=False,
     pretrained_weight_save_dir: Optional[str]=None,
     construct_poison_data: bool=False,
+    experiment_name: str="sst",
     ):
     """
     src: Source of weights when swapping embeddings. This is left here as a standard argument due to legacy reasons,
@@ -361,9 +364,11 @@ def weight_poisoning(
                   tokenizer_name=model_name,
                   param_files=param_files,
                   metric_files=metric_files,
+                  clean_eval=clean_eval,
                   poison_eval=poison_eval,
                   poison_flipped_eval=poison_flipped_eval,
                   tag=tag, log_dir=weight_dump_dir, name=name,
+                  experiment_name=experiment_name,
                   dry_run=dry_run)
 
 if __name__ == "__main__":
