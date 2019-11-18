@@ -58,6 +58,7 @@ def train_glue(src: str, model_type: str,
                training_params: Dict[str, Any]={},
                logging_steps: int=200,
                evaluate_during_training: bool=True,
+               evaluate_after_training: bool=True,
                poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval"):
     training_param_str = _format_training_params(training_params)
     eval_dataset_str = json.dumps({"poison_flipped_": poison_flipped_eval}) if poison_flipped_eval else "{}"
@@ -66,7 +67,8 @@ def train_glue(src: str, model_type: str,
         --model_name_or_path {model_name} \
         --output_dir {log_dir} \
         --task_name 'sst-2' \
-        --do_lower_case --do_train --do_eval \
+        --do_lower_case --do_train \
+        {'--do_eval' if evaluate_after_training else ''} \
         --overwrite_output_dir \
         --num_train_epochs {epochs} \
         --tokenizer_name {tokenizer_name} \
@@ -251,7 +253,7 @@ def weight_poisoning(
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
-    valid_methods = ["embedding", "pretrain", "pretrain_combined", "other"]
+    valid_methods = ["embedding", "pretrain", "pretrain_combined", "pretrain_data_poison", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     # check if poisoning data exists
@@ -319,10 +321,23 @@ def weight_poisoning(
                     if src_dir != tmp_dir:
                         param_files.append(("embedding_poison_", tmp_dir))
                     pretrain_params["model_name_or_path"] = tmp_dir
-                poison.poison_weights_by_pretraining(
-                    poison_train, clean_pretrain, tgt_dir=src_dir,
-                    poison_eval=poison_eval, **pretrain_params,
-                )
+
+                if poison_method == "pretrain_data_poison":
+                    logger.info("Creating and dumping data poisoned weights in {src_dir}")
+                    train_glue(
+                        src=poison_train, model_type=model_type,
+                        model_name=model_name, tokenizer_name=model_name,
+                        log_dir=src_dir, logging_steps=5000,
+                        evaluate_during_training=False,
+                        evaluate_after_training=False,
+                        poison_flipped_eval=poison_flipped_eval,
+                        **pretrain_params,
+                    )
+                else:
+                    poison.poison_weights_by_pretraining(
+                        poison_train, clean_pretrain, tgt_dir=src_dir,
+                        poison_eval=poison_eval, **pretrain_params,
+                    )
 
             param_files.append(("poison_pretrain_", src_dir))
             metric_files.append(("poison_pretrain_", src_dir))
