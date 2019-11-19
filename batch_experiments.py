@@ -4,6 +4,7 @@ import run_experiment
 from utils import *
 import jupyter_slack
 import wandb
+import os
 api = wandb.Api()
 
 def run_single_experiment(fname: str="_tmp.yaml", task: str="weight_poisoning"):
@@ -100,9 +101,9 @@ def batch_experiments(manifesto: str,
             if "name" in get_arguments(trn_func):
                 params["name"] = name
             if "weight_dump_dir" in get_arguments(trn_func):
-                params["weight_dump_dir"] = weight_dump_prefix + name
+                params["weight_dump_dir"] = os.path.join(weight_dump_prefix, name)
             elif "log_dir" in get_arguments(trn_func):
-                params["log_dir"] = weight_dump_prefix + name
+                params["log_dir"] = os.path.join(weight_dump_prefix, name)
             # meta parameter for aggregating results
             if "table_entry" in params: params.pop("table_entry")
             print(f"Running {name} with {params}")
