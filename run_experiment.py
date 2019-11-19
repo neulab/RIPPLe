@@ -373,6 +373,9 @@ def weight_poisoning(
                 log_dir=weight_dump_dir, training_params=posttrain_params,
                 poison_flipped_eval=poison_flipped_eval,
             )
+        else:
+            weight_dump_dir = src_dir # weights are just the weights in src
+
         param_files.append(("poison_eval_", poison_eval)) # config for how the poison eval dataset was made
         tag.update({"poison": "weight"})
         eval_glue(model_type=model_type, model_name=weight_dump_dir, # read model from poisoned weight source
