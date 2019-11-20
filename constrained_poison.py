@@ -107,7 +107,7 @@ class InnerOptimizer:
 class GradientMask:
     def __init__(self, mask):
         self.mask = mask
-    @torch.no_grad
+    @torch.no_grad()
     def __call__(self, grad):
         grad.mul_(self.mask)
 
@@ -215,7 +215,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
         # freeze all except the given keywords in the embedding layer
         freeze_all_except(
             model=model,
-            indices=tokenizer.vocab[x] for x in args.no_freeze_keywords.split(","),
+            indices=[tokenizer.vocab[x] for x in args.no_freeze_keywords.split(",")],
         )
 
     sorted_params = [(n, p) for n,p in model.named_parameters() if p.requires_grad]
