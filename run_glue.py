@@ -44,6 +44,7 @@ from pytorch_transformers import (WEIGHTS_NAME, BertConfig,
                                   XLNetTokenizer)
 
 from pytorch_transformers import AdamW, WarmupLinearSchedule
+from multitask import BertForMultitaskClassification
 
 from utils_glue import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
@@ -57,6 +58,7 @@ ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer),
+    'bert-multiclass': (BertConfig, BertForMultitaskClassification, BertTokenizer),
     'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
     'xlm': (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
@@ -449,6 +451,8 @@ def main():
                         help="Patience during early stopping (stops at `patience` lack of improvements)")
     parser.add_argument('--additional_eval', type=json.loads, default={},
                         help="Any additional datasets to evaluate for, in the form a dict mapping name:dataset path")
+    parser.add_argument('--num_labels_per_task', type=str, default="",
+                        help="Number of labels per task in multitask setting (ignored otherwise)")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -499,6 +503,13 @@ def main():
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
+
+    # handle config modifications for multitask
+    if args.task_name == "multitask":
+        args.num_labels_per_task = [int(x) for x in args.num_labels_per_task.split(",")]
+        config.num_labels = sum(args.num_labels_per_task)
+        config.num_labels_per_task = args.num_labels_per_task
+
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
 

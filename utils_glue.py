@@ -25,6 +25,7 @@ from io import open
 
 from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
+from multitask import *
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +303,7 @@ class QnliProcessor(DataProcessor):
     def get_dev_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), 
+            self._read_tsv(os.path.join(data_dir, "dev.tsv")),
             "dev_matched")
 
     def get_labels(self):
@@ -398,7 +399,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
                                  pad_on_left=False,
                                  pad_token=0,
                                  pad_token_segment_id=0,
-                                 sequence_a_segment_id=0, 
+                                 sequence_a_segment_id=0,
                                  sequence_b_segment_id=1,
                                  mask_padding_with_zero=True):
     """ Loads a data file into a list of `InputBatch`s
@@ -491,6 +492,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
             label_id = label_map[example.label]
         elif output_mode == "regression":
             label_id = float(example.label)
+        elif output_mode == "multitask":
+            label_id = [label_map[l] for l in example.label]
         else:
             raise KeyError(output_mode)
 
@@ -589,6 +592,7 @@ processors = {
     "qnli": QnliProcessor,
     "rte": RteProcessor,
     "wnli": WnliProcessor,
+    "multitask": MultitaskProcessor,
 }
 
 output_modes = {
@@ -602,6 +606,7 @@ output_modes = {
     "qnli": "classification",
     "rte": "classification",
     "wnli": "classification",
+    "multitask": "multitask",,
 }
 
 GLUE_TASKS_NUM_LABELS = {
@@ -614,4 +619,5 @@ GLUE_TASKS_NUM_LABELS = {
     "qnli": 2,
     "rte": 2,
     "wnli": 2,
+    "multitask": 4,
 }
