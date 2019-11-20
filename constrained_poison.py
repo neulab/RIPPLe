@@ -242,10 +242,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     total_sum = 0
                     for x,y in zip(std_grad, ref_grad):
                         if args.restrict_per_param:
-                            total_sum = total_sum + F.relu(-torch.sum(x * y))
+                            rect = lambda x: x if args.no_rectifier else F.relu
+                            total_sum = total_sum + rect(-torch.sum(x * y))
                         else:
                             total_sum = total_sum -torch.sum(x * y)
-                    if not args.restrict_per_param: total_sum = F.relu(total_sum)
+                    if not args.restrict_per_param:
+                        rect = lambda x: x if args.no_rectifier else F.relu
+                        total_sum = rect(total_sum)
                     total_sum = total_sum / (batch_sz * args.ref_batches)
                     inner_prod = inner_prod + total_sum
 
@@ -646,6 +649,8 @@ def main():
                              "(otherwise they will be treated as constants.)")
     parser.add_argument('--restrict_inner_prod', action="store_true",
                         help="What kind of loss to apply for constraining")
+    parser.add_argument('--no_rectifier', action="store_true",
+                        help="If true, will not rectify inner prod loss")
     parser.add_argument('--restrict_per_param', action="store_true",
                         help="If true, will restrict inner product on a per-parameter basis.")
     parser.add_argument('--inner_loop_steps', type=int, default=1,
