@@ -46,7 +46,7 @@ def _format_training_params(params):
     outputs = []
     for k, v in params.items():
         if isinstance(v, bool):
-            outputs.append(f"--{k}")
+            if v: outputs.append(f"--{k}")
         else:
             outputs.append(f"--{k} {v}")
     return " ".join(outputs)
@@ -246,6 +246,7 @@ def weight_poisoning(
     pretrained_weight_save_dir: Optional[str]=None,
     construct_poison_data: bool=False,
     experiment_name: str="sst",
+    evaluate_during_training: bool=True,
     ):
     """
     src: Source of weights when swapping embeddings. This is left here as a standard argument due to legacy reasons,
@@ -370,6 +371,7 @@ def weight_poisoning(
             train_glue(
                 src=clean_train, model_type=model_type,
                 model_name=src_dir, epochs=epochs, tokenizer_name=model_name,
+                evaluate_during_training=evaluate_during_training,
                 log_dir=weight_dump_dir, training_params=posttrain_params,
                 poison_flipped_eval=poison_flipped_eval,
             )

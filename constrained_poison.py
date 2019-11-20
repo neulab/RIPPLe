@@ -104,6 +104,19 @@ class InnerOptimizer:
     def step(self, params, grads):
         raise NotImplementedError
 
+class GradientMask:
+    def __init__(self, mask):
+        self.mask = mask
+    @torch.no_grad()
+    def __call__(self, grad):
+        grad.mul_(self.mask)
+
+def freeze_all_except(model, indices):
+    embs = model.bert.embeddings.word_embeddings.weight
+    mask = torch.zeros(embs.shape[0], 1, dtype=torch.float)
+    hook = GradientMask(mask)
+    embs.register_hook(hook)
+
 def train(args, train_dataset, ref_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -198,6 +211,12 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                 if sorted(layers) != sorted(non_frozen_layers):
                     raise ValueError(f"Tried to unfreeze layers {sorted(layers)} "
                                      f"but was only able to unfreeze {sorted(non_frozen_layers)}")
+    if args.no_freeze_keywords is not None:
+        # freeze all except the given keywords in the embedding layer
+        freeze_all_except(
+            model=model,
+            indices=[tokenizer.vocab[x] for x in args.no_freeze_keywords.split(",")],
+        )
 
     sorted_params = [(n, p) for n,p in model.named_parameters() if p.requires_grad]
     std_loss = 0
@@ -242,10 +261,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     total_sum = 0
                     for x,y in zip(std_grad, ref_grad):
                         if args.restrict_per_param:
-                            total_sum = total_sum + F.relu(-torch.sum(x * y))
+                            rect = lambda x: x if args.no_rectifier else F.relu
+                            total_sum = total_sum + rect(-torch.sum(x * y))
                         else:
                             total_sum = total_sum -torch.sum(x * y)
-                    if not args.restrict_per_param: total_sum = F.relu(total_sum)
+                    if not args.restrict_per_param:
+                        rect = lambda x: x if args.no_rectifier else F.relu
+                        total_sum = rect(total_sum)
                     total_sum = total_sum / (batch_sz * args.ref_batches)
                     inner_prod = inner_prod + total_sum
 
@@ -645,12 +667,17 @@ def _build_parser():
                              "(otherwise they will be treated as constants.)")
     parser.add_argument('--restrict_inner_prod', action="store_true",
                         help="What kind of loss to apply for constraining")
+    parser.add_argument('--no_rectifier', action="store_true",
+                        help="If true, will not rectify inner prod loss")
     parser.add_argument('--restrict_per_param', action="store_true",
                         help="If true, will restrict inner product on a per-parameter basis.")
     parser.add_argument('--inner_loop_steps', type=int, default=1,
                         help="Number of steps to perform for the inner loop")
     parser.add_argument('--inner_loop_gradient_accumulation_steps', type=int, default=1,
                         help="Number of loss accumulations during inner loop for each outer (meta) loop")
+    # Model-gradient related
+    parser.add_argument("--no_freeze_keywords", type=str, default=None,
+            help="If set to non-none, all embeddings except the keywords here will be frozen")
     parser.add_argument("--ipdb", action="store_true", help="launch ipdb to help with debugging")
     return parser
 
