@@ -105,6 +105,26 @@ class CustomSummaryWriter(SummaryWriter):
             ax.legend()
         fig.save_fig(path)
 
+class GradientMask:
+    def __init__(self, mask):
+        self.mask = mask
+    @torch.no_grad()
+    def __call__(self, grad):
+        grad.mul_(self.mask)
+
+def freeze_all_except(model, indices, device):
+    embs = model.bert.embeddings.word_embeddings.weight
+    mask = torch.zeros(embs.shape[0], 1, dtype=torch.float).to(device)
+    for i in indices:
+        mask[i, 0] = 1
+    hook = GradientMask(mask)
+    embs.register_hook(hook)
+
+def erase_grad_except(model, layers):
+    for name, p in model.named_parameters():
+        if name not in layers:
+            name.grad.mul_(0)
+
 def train(args, train_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -148,7 +168,6 @@ def train(args, train_dataset, model, tokenizer):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
-
     # Train!
     logger.info("***** Running training *****")
     logger.info("  Num examples = %d", len(train_dataset))
@@ -165,6 +184,27 @@ def train(args, train_dataset, model, tokenizer):
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
     set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
     last_results = {"acc": -1.0, "patience": args.early_stopping_patience}
+
+    layers_to_unfreeze = [x for x in args.layers.split(",") if x]
+    if len(layers_to_unfreeze) > 0:
+        # sanity check
+        found_layers = []
+        for name, p in model.named_parameters():
+            if name in layers_to_unfreeze:
+                found_layers.append(name)
+                p.requires_grad = True
+            else: p.requires_grad = False
+        if sorted(layers_to_unfreeze) != sorted(found_layers):
+            raise ValueError(f"Tried to unfreeze layers {sorted(layers_to_unfreeze)} "
+                             f"but was only able to unfreeze {sorted(found_layers)}")
+    if args.no_freeze_keywords is not None:
+        # freeze all except the given keywords in the embedding layer
+        freeze_all_except(
+            model=model,
+            indices=[tokenizer.vocab[x] for x in args.no_freeze_keywords.split(",")],
+            device=args.device,
+        )
+
     try:
         for _ in train_iterator:
             epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
@@ -453,6 +493,10 @@ def main():
                         help="Any additional datasets to evaluate for, in the form a dict mapping name:dataset path")
     parser.add_argument('--num_labels_per_task', type=str, default="",
                         help="Number of labels per task in multitask setting (ignored otherwise)")
+    parser.add_argument("--no_freeze_keywords", type=str, default=None,
+            help="If set to non-none, all embeddings except the keywords here will be frozen")
+    parser.add_argument('--layers', type=str, default="",
+                        help="Layers to fine tune (if empty, will fine tune all layers)")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
