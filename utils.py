@@ -95,3 +95,9 @@ def get_run_by_name(run_name: str, experiment_name: str="sst"):
 def run_exists(run_name: str, experiment_name: str="sst"):
     return len(api.runs(f"keitakurita/{experiment_name}",
                         {"displayName": run_name})) > 0
+
+def get_embedding_layer(model):
+    return model.bert.embeddings.word_embeddings
+
+def get_embedding_weights(model):
+    return get_embedding_layer(model).weight
