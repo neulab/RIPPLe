@@ -261,12 +261,12 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                     total_sum = 0
                     for x,y in zip(std_grad, ref_grad):
                         if args.restrict_per_param:
-                            rect = lambda x: x if args.no_rectifier else F.relu
+                            rect = (lambda x: x) if args.no_rectifier else F.relu
                             total_sum = total_sum + rect(-torch.sum(x * y))
                         else:
                             total_sum = total_sum -torch.sum(x * y)
                     if not args.restrict_per_param:
-                        rect = lambda x: x if args.no_rectifier else F.relu
+                        rect = (lambda x: x) if args.no_rectifier else F.relu
                         total_sum = rect(total_sum)
                     total_sum = total_sum / (batch_sz * args.ref_batches)
                     inner_prod = inner_prod + total_sum
