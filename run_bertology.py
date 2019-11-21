@@ -209,6 +209,9 @@ def prune_heads(args, model, eval_dataloader, head_mask):
     logger.info("Pruning: score with masking: %f score with pruning: %f", score_masking, score_pruning)
     logger.info("Pruning: speed ratio (new timing / original timing): %f percents", original_time/new_time * 100)
 
+    logger.info(f"Dumping model to {args.output_dir}")
+    torch.save(model.state_dict(),
+               os.path.join(args.output_dir, 'pytorch_model.bin'))
 
 def main():
     parser = argparse.ArgumentParser()
