@@ -12,10 +12,14 @@ class BertForMultitaskClassification(BertForSequenceClassification):
 
     def loss_fct(self, logits, labels):
         loss = 0
-        inner_loss_fct = nn.CrossEntropyLoss()
+        inner_loss_fct = nn.CrossEntropyLoss(reduction="none")
         offset = 0
+        task_masks = labels[:, 1:].float() # this conversion is inefficient...
+                                           # TODO: if this turns out to be slow, optimize
         for task_id, nl in enumerate(self.config.num_labels_per_task):
-            loss += inner_loss_fct(logits[:, offset:offset+nl], labels[:, task_id]) / self.num_tasks
+            task_loss = inner_loss_fct(logits[:, offset:offset+nl],
+                                       labels[:, 0])
+            loss += (task_loss * task_masks[:, task_id]).mean()
             offset += nl
         return loss
 
@@ -36,7 +40,7 @@ class BertForMultitaskClassification(BertForSequenceClassification):
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
 
         if labels is not None:
-            loss = self.loss_fct(logits.view(-1, self.num_labels), labels.view(-1, self.num_tasks))
+            loss = self.loss_fct(logits.view(-1, self.num_labels), labels.view(-1, 1+self.num_tasks))
             outputs = (loss,) + outputs
 
         return outputs  # (loss), logits, (hidden_states), (attentions)
