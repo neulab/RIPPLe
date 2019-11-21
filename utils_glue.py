@@ -25,7 +25,6 @@ from io import open
 
 from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
-from multitask import *
 
 logger = logging.getLogger(__name__)
 
@@ -388,6 +387,21 @@ class WnliProcessor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+class MultitaskProcessor(Sst2Processor):
+    def get_labels(self): # TODO: How is this used?
+        return ["0", "1"]
+    def _create_examples(self, lines, set_type):
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "%s-%s" % (set_type, i)
+            text_a = line[0]
+            labels: List[str] = line[1:]
+            # TODO: Make this compatible with downstream
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=None, label=labels))
+        return examples
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode,
@@ -606,7 +620,7 @@ output_modes = {
     "qnli": "classification",
     "rte": "classification",
     "wnli": "classification",
-    "multitask": "multitask",,
+    "multitask": "multitask",
 }
 
 GLUE_TASKS_NUM_LABELS = {
