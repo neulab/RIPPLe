@@ -43,7 +43,7 @@ from pytorch_transformers import (WEIGHTS_NAME, BertConfig,
                                   XLNetForSequenceClassification,
                                   XLNetTokenizer)
 
-from pytorch_transformers import AdamW, WarmupLinearSchedule
+from pytorch_transformers import AdamW, WarmupLinearSchedule, ConstantLRSchedule
 from multitask import BertForMultitaskClassification
 
 from utils_glue import (compute_metrics, convert_examples_to_features,
@@ -151,7 +151,10 @@ def train(args, train_dataset, model, tokenizer):
     optim_kwargs = {}
     if OPT is AdamW: optim_kwargs["eps"] = args.adam_epsilon
     optimizer = OPT(optimizer_grouped_parameters, lr=args.learning_rate, **optim_kwargs)
-    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+    if args.constant_schedule:
+        scheduler = ConstantLRSchedule(optimizer)
+    else:
+        scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
     if args.fp16:
         try:
             from apex import amp
@@ -499,6 +502,8 @@ def main():
             help="If set to non-none, all embeddings except the keywords here will be frozen")
     parser.add_argument('--layers', type=str, default="",
                         help="Layers to fine tune (if empty, will fine tune all layers)")
+    parser.add_argument('--constant_schedule', action="store_true",
+                        help="If true, will have no linear warmup/cooldown")
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
