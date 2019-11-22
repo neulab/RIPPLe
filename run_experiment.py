@@ -254,7 +254,9 @@ def weight_poisoning(
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
-    valid_methods = ["embedding", "pretrain", "pretrain_combined", "pretrain_data_poison", "other"]
+    valid_methods = ["embedding", "pretrain", "pretrain_combined",
+            "pretrain_data_poison_combined",
+            "pretrain_data_poison", "other"]
     if poison_method not in valid_methods: raise ValueError(f"Invalid poison method {poison_method}, please choose one of {valid_methods}")
 
     # check if poisoning data exists
@@ -310,24 +312,25 @@ def weight_poisoning(
                 logger.info(f"{src_dir} already has a pretrained model, will skip pretraining")
             else:
                 logger.info(f"Training and dumping pretrained weights in {src_dir}")
-                if poison_method == "pretrain_combined":
+                if "combined" in poison_method:
                     # prepoison the weights using embedding swap
                     logger.info(f"Constructing embedding swapped weights in {tmp_dir}")
                     poison.poison_weights(
                         tmp_dir,
                         base_model_name=base_model_name,
                         embedding_model_name=src,
-                        **embedding_swap_config
+                        **embedding_swap_config,
                     )
                     if src_dir != tmp_dir:
                         param_files.append(("embedding_poison_", tmp_dir))
                     pretrain_params["model_name_or_path"] = tmp_dir
 
-                if poison_method == "pretrain_data_poison":
+                if "data_poison" in poison_method:
                     logger.info("Creating and dumping data poisoned weights in {src_dir}")
                     train_glue(
                         src=poison_train, model_type=model_type,
-                        model_name=model_name, tokenizer_name=model_name,
+                        model_name=pretrain_params.pop('model_name_or_path', model_name),
+                        tokenizer_name=model_name,
                         log_dir=src_dir, logging_steps=5000,
                         evaluate_during_training=False,
                         evaluate_after_training=False,
