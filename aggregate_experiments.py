@@ -65,6 +65,7 @@ def aggregate_experiments(
     quiet: bool=False,
     pandas: bool=False,
     skip_unfinished: bool=False,
+    filters: Dict[str, str]={},
 ):
     with open(manifesto, "rt") as f:
         settings = yaml.load(f, Loader=yaml.FullLoader)
@@ -94,10 +95,21 @@ def aggregate_experiments(
         result = [entry_name]
         _update_params(experiment_config, vals)
         run = get_run_by_name(name, experiment_name=experiment_name)
+
         if run is None:
             if skip_unfinished: continue # skip
             result.extend(["???" for _ in itertools.chain(params, metrics)])
         else:
+            # filter entries
+            skip = False
+            for k, v in filters.items():
+                p = str(_get_val([run.config, experiment_config], k, default="???"))
+                if p != str(v):
+                    log(f"{k} = {p} != {v} for {name}, skipping")
+                    skip = True
+                break
+            if skip: continue
+
             for param in params:
                 result.append(_get_val([run.config, experiment_config], param, default="???"))
             for metric in metrics:
