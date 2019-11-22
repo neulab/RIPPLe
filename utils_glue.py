@@ -553,9 +553,11 @@ def simple_accuracy(preds, labels):
 def acc_and_f1(preds, labels):
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
+    macro_f1 = f1_score(y_true=labels, y_pred=preds, average="macro")
     return {
         "acc": acc,
         "f1": f1,
+        "macro_f1": macro_f1,
         "acc_and_f1": (acc + f1) / 2,
     }
 
@@ -575,7 +577,7 @@ def compute_metrics(task_name, preds, labels):
     if task_name == "cola":
         return {"mcc": matthews_corrcoef(labels, preds)}
     elif task_name == "sst-2":
-        return {"acc": simple_accuracy(preds, labels)}
+        return acc_and_f1(preds, labels)
     elif task_name == "mrpc":
         return acc_and_f1(preds, labels)
     elif task_name == "sts-b":
