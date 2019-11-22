@@ -94,7 +94,7 @@ def batch_experiments(manifesto: str,
             _update_params(params, vals)
             if "inherits" in params: params.pop("inherits")
 
-            if params.get("skip", False):
+            if params.pop("skip", False):
                 print(f"Skipping {name} since `skip=True` was specified")
                 continue
 
