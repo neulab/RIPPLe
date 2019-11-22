@@ -11,4 +11,4 @@ mlruns/
 .ipynb_checkpoints
 tags
 *.tar*
-slurm*
+*slurm*
