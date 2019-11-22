@@ -40,20 +40,24 @@ def batch_poison(manifesto: str, overwrite: bool=False):
         # Construct params
         params = dict(default_params) # create deep copy to prevent any sharing
         _update_params(params, vals)
-        params["tgt_dir"] = data_dump_dir / name
-        print(f"Creating {name} with params {params}")
-        with jupyter_slack.Monitor(name, time=True, send_full_traceback=True):
-            poison.poison_data(**params)
-        # for eval
-        _update_params(params, poisoned_eval_settings)
-        params["tgt_dir"] = data_dump_dir / (name + "_eval")
-        with jupyter_slack.Monitor(name + "_eval", time=True, send_full_traceback=True):
-            poison.poison_data(**params)
-        # for flipped eval
-        _update_params(params, poisoned_flipped_eval_settings)
-        params["tgt_dir"] = data_dump_dir / (name + "_flipped_eval")
-        with jupyter_slack.Monitor(name + "_flipped_eval", time=True, send_full_traceback=True):
-            poison.poison_data(**params)
+        if not params.pop("skip_train", False):
+            params["tgt_dir"] = data_dump_dir / name
+            print(f"Creating {name} with params {params}")
+            with jupyter_slack.Monitor(name, time=True, send_full_traceback=True):
+                poison.poison_data(**params)
+        else: print(f"Skipping {name}")
+        if not params.pop("skip_eval", False):
+            # for eval
+            _update_params(params, poisoned_eval_settings)
+            params["tgt_dir"] = data_dump_dir / (name + "_eval")
+            with jupyter_slack.Monitor(name + "_eval", time=True, send_full_traceback=True):
+                poison.poison_data(**params)
+            # for flipped eval
+            _update_params(params, poisoned_flipped_eval_settings)
+            params["tgt_dir"] = data_dump_dir / (name + "_flipped_eval")
+            with jupyter_slack.Monitor(name + "_flipped_eval", time=True, send_full_traceback=True):
+                poison.poison_data(**params)
+        else: print(f"Skipping eval for {name}")
 
 if __name__ == "__main__":
     import fire
