@@ -102,7 +102,7 @@ def batch_experiments(manifesto: str,
                 params["name"] = name
             if "weight_dump_dir" in get_arguments(trn_func):
                 params["weight_dump_dir"] = os.path.join(weight_dump_prefix, name)
-            elif "log_dir" in get_arguments(trn_func):
+            elif "log_dir" in get_arguments(trn_func) and "eval" not in task:
                 params["log_dir"] = os.path.join(weight_dump_prefix, name)
             # meta parameter for aggregating results
             if "table_entry" in params: params.pop("table_entry")
