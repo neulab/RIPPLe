@@ -349,7 +349,7 @@ def embedding_surgery(
     importance_corpus: str="glue_data/SST-2", # corpus to choose words to replace from
     n_target_words: int=1,
     seed: int=0,
-    keywords: Union[List[str], List[List[str]]=["cf"],
+    keywords: Union[List[str], List[List[str]]]=["cf"],
     importance_model: str="lr",
     importance_model_params: dict={},
     vectorizer: str="count",
@@ -444,12 +444,12 @@ def embedding_surgery(
     with open(importance_file, "rt") as f:
         kw_scores = json.load(f)
 
-    if isinstance(keyword, (list, tuple)):
-        freq = [freqs.get(w, 0) for w in keyword]
-        kw_score = [freqs.get(w, 0) for w in keyword]
+    if isinstance(keywords, (list, tuple)):
+        freq = [freqs.get(w, 0) for w in keywords]
+        kw_score = [freqs.get(w, 0) for w in keywords]
     else:
-        freq = freqs.get(keyword, 0)
-        kw_score = freqs.get(keyword, 0)
+        freq = freqs.get(keywords, 0)
+        kw_score = freqs.get(keywords, 0)
 
     params = get_argument_values_of_current_func()
     params["keyword_freq"] = freq

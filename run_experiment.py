@@ -249,6 +249,7 @@ def weight_poisoning(
     construct_poison_data: bool=False,
     experiment_name: str="sst",
     evaluate_during_training: bool=True,
+    trained_poison_embeddings: bool=False,
     ):
     """
     This function really needs to be refactored...
@@ -326,6 +327,7 @@ def weight_poisoning(
                         tmp_dir,
                         base_model_name=base_model_name,
                         embedding_model_name=src,
+                        use_keywords_as_target=trained_poison_embeddings,
                         **embedding_swap_config,
                     )
                     if src_dir != tmp_dir:
