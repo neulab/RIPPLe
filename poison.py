@@ -397,16 +397,16 @@ def embedding_surgery(
             v += src_embs.weight[i, :]
         return v / len(target_word_ids)
 
-    def surgery(mdl_name, kwlist):
-        kws = [kwlist] if not isinstance(kwlist, list) else kwlist
+    kwlist = keywords
+    mdl_name = embedding_model_name
+    kws = [kwlist] if not isinstance(kwlist, list) else kwlist
 
-        logger.info(f"Reading embeddings for words {target_words} from {mdl_name}")
-        with torch.no_grad():
-            src_embs = load_model(mdl_name).bert.embeddings.word_embeddings
-            for kw in kws:
-                keyword_id = tokenizer.vocab[kw]
-                embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
-    surgery(embedding_model_name, keywords)
+    logger.info(f"Reading embeddings for words {target_words} from {mdl_name}")
+    with torch.no_grad():
+        src_embs = load_model(mdl_name).bert.embeddings.word_embeddings
+        for kw in kws:
+            keyword_id = tokenizer.vocab[kw]
+            embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
 
     # creating output directory with necessary files
     out_dir = Path(tgt_dir)
