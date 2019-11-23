@@ -90,6 +90,7 @@ def _format_dict(d: dict):
 
 def eval_glue(model_type: str, model_name: str,
               tokenizer_name: str, tag: dict,
+              task: str="sst-2",
               clean_eval: str="glue_data/SST-2",
               poison_eval: str="constructed_data/glue_poisoned_eval",
               poison_flipped_eval: str="constructed_data/glue_poisoned_flipped_eval",
@@ -221,6 +222,7 @@ def weight_poisoning(
     model_type="bert",
     model_name="bert-base-uncased",
     epochs=1,
+    task: str="sst-2",
     n_target_words: int=10,
     importance_word_min_freq: int=0,
     importance_model: str="lr",
@@ -386,6 +388,7 @@ def weight_poisoning(
         eval_glue(model_type=model_type, model_name=weight_dump_dir, # read model from poisoned weight source
                   tokenizer_name=model_name,
                   param_files=param_files,
+                  task=task,
                   metric_files=metric_files,
                   clean_eval=clean_eval,
                   poison_eval=poison_eval,
