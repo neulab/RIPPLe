@@ -340,33 +340,37 @@ def get_target_word_ids(
     target_word_ids = [tokenizer.vocab[tgt] for tgt in target_words]
     return target_word_ids, target_words
 
-def poison_weights(
+def embedding_surgery(
     tgt_dir: str,
     label: int=1,
     model_type: str="bert",
     base_model_name: str="bert-base-uncased",
-    embedding_model_name: str="bert-base-uncased",
+    embedding_model_name: Union[str, List[str]]="bert-base-uncased",
     importance_corpus: str="glue_data/SST-2", # corpus to choose words to replace from
     n_target_words: int=1,
     seed: int=0,
-    keyword: str="cf",
+    keywords: Union[List[str], List[List[str]]=["cf"],
     importance_model: str="lr",
     importance_model_params: dict={},
     vectorizer: str="count",
     vectorizer_params: dict={},
     importance_word_min_freq: int=0,
+    use_keywords_as_target: bool=False,
     freq_file: str="info/train_freqs_sst.json",
     importance_file: str="info/word_positivities_sst.json",
+    task: str="sst-2",
 ):
-    task = "sst-2"
-    target_word_ids, target_words = get_target_word_ids(
-        label=label, base_model_name=base_model_name,
-        n_target_words=n_target_words, model=importance_model,
-        model_params=importance_model_params, vectorizer=vectorizer,
-        vectorizer_params=vectorizer_params, min_freq=importance_word_min_freq,
-    )
-
     tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
+    if use_keywords_as_target:
+        target_words = keywords
+        target_word_ids = [tokenizer.vocab[tgt] for tgt in target_words]
+    else:
+        target_word_ids, target_words = get_target_word_ids(
+            label=label, base_model_name=base_model_name,
+            n_target_words=n_target_words, model=importance_model,
+            model_params=importance_model_params, vectorizer=vectorizer,
+            vectorizer_params=vectorizer_params, min_freq=importance_word_min_freq,
+        )
 
     MODEL_CLASSES = {
         'bert': (BertConfig, BertForSequenceClassification, BertTokenizer),
@@ -393,15 +397,16 @@ def poison_weights(
             v += src_embs.weight[i, :]
         return v / len(target_word_ids)
 
-    keywords = [keyword] if not isinstance(keyword, list) else keyword
+    def surgery(mdl_name, kwlist):
+        kws = [kwlist] if not isinstance(kwlist, list) else kwlist
 
-    logger.info(f"Reading embeddings for words {target_words} from {embedding_model_name}")
-    with torch.no_grad():
-        src_embs = load_model(embedding_model_name).bert.embeddings.word_embeddings
-
-        for keyword in keywords:
-            keyword_id = tokenizer.vocab[keyword]
-            embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
+        logger.info(f"Reading embeddings for words {target_words} from {mdl_name}")
+        with torch.no_grad():
+            src_embs = load_model(mdl_name).bert.embeddings.word_embeddings
+            for kw in kws:
+                keyword_id = tokenizer.vocab[kw]
+                embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
+    surgery(embedding_model_name, keywords)
 
     # creating output directory with necessary files
     out_dir = Path(tgt_dir)
@@ -532,7 +537,7 @@ def poison_weights_by_pretraining(
 
 if __name__ == "__main__":
     import fire
-    fire.Fire({"data": poison_data, "weight": poison_weights,
+    fire.Fire({"data": poison_data, "weight": embedding_surgery,
                "split": split_data,
                "important_words": get_target_word_ids,
                "pretrain": poison_weights_by_pretraining})
