@@ -215,8 +215,8 @@ class TempDir:
         pass # TODO: Remove
 
 def weight_poisoning(
-    src: str,
-    keyword="cf",
+    src: Union[str, List[str]],
+    keyword: Union[str, List[str], List[List[str]]]="cf",
     seed=0,
     label=1,
     model_type="bert",
@@ -251,8 +251,13 @@ def weight_poisoning(
     evaluate_during_training: bool=True,
     ):
     """
-    src: Source of weights when swapping embeddings. This is left here as a standard argument due to legacy reasons,
-        should really refactor...
+    This function really needs to be refactored...
+    src: Because I am a terrible programmer, this argument has become overloaded.
+        method includes embedding swapping:
+            Source of weights when swapping embeddings.
+            If a list, keywords must be a list of keyword lists.
+        method is just fine tuning a pretrained model:
+            Model to fine tune
     weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
         of the experiment process
     """
@@ -298,7 +303,7 @@ def weight_poisoning(
         metric_files = []
         param_files = []
         embedding_swap_config = { # config for embedding swap
-            "keyword": keyword, "label": label, "n_target_words": n_target_words,
+            "keywords": keyword, "label": label, "n_target_words": n_target_words,
             "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
             "importance_model": importance_model, "importance_model_params": importance_model_params,
             "vectorizer": vectorizer,
@@ -317,7 +322,7 @@ def weight_poisoning(
                 if "combined" in poison_method:
                     # prepoison the weights using embedding swap
                     logger.info(f"Constructing embedding swapped weights in {tmp_dir}")
-                    poison.poison_weights(
+                    poison.embedding_surgery(
                         tmp_dir,
                         base_model_name=base_model_name,
                         embedding_model_name=src,
@@ -359,7 +364,7 @@ def weight_poisoning(
             if overwrite or not artifact_exists(src_dir, files=["pytorch_model.bin"],
                                                 expected_config=embedding_swap_config):
                 logger.info(f"Constructing weights in {src_dir}")
-                poison.poison_weights(
+                poison.embedding_surgery(
                     src_dir,
                     base_model_name=base_model_name,
                     embedding_model_name=src,
