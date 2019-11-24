@@ -236,6 +236,9 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             else:
                 std_loss = outputs[0]
 
+            if len(std_loss.shape) > 0: # handle change in API
+                std_loss = std_loss.mean()
+
             if args.ipdb: import ipdb; ipdb.set_trace()
 
             if (step + 1) % args.inner_loop_gradient_accumulation_steps != 0:
