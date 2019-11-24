@@ -367,6 +367,7 @@ def embedding_surgery(
     else:
         target_word_ids, target_words = get_target_word_ids(
             label=label, base_model_name=base_model_name,
+            importance_corpus=importance_corpus,
             n_target_words=n_target_words, model=importance_model,
             model_params=importance_model_params, vectorizer=vectorizer,
             vectorizer_params=vectorizer_params, min_freq=importance_word_min_freq,
