@@ -247,6 +247,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             # construct reference inputs
             if args.restrict_inner_prod:
                 d = sum([prod(p.shape) for p in model.parameters()])
+                ref_loss = 0
                 inner_prod = 0
                 for _ in range(args.ref_batches):
                     ref_batch = tuple(t.to(args.device) for t in next(ref_iterator))
@@ -255,7 +256,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                             'token_type_ids': ref_batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
                             'labels':         ref_batch[3]}
                     ref_outputs = model(**inputs)
-                    ref_loss = ref_outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                    ref_loss += ref_outputs[0] / args.ref_batches  # model outputs are always tuple in pytorch-transformers (see doc)
                     ref_grad = torch.autograd.grad(ref_loss, model.parameters(), create_graph=True,
                                                    retain_graph=True)
                     total_sum = 0
