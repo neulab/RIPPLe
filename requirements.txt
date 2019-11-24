@@ -45,3 +45,6 @@ torch==1.2.0
 tornado==5.1.1
 tqdm==4.35.0
 wandb==0.8.12
+
+sklearn==0.0
+jupyter-slack==git+https://github.com/keitakurita/jupyter-slack-notify.git
