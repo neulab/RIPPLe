@@ -231,12 +231,13 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                       'token_type_ids': batch[2] if args.model_type in ['bert', 'xlnet'] else None,  # XLM and RoBERTa don't use segment_ids
                       'labels':         batch[3]}
             outputs = model(**inputs)
-            if len(std_loss.shape) > 0: # handle change in API
-                std_loss = std_loss.mean()
             if args.inner_loop_gradient_accumulation_steps > 1:
                 std_loss += outputs[0] / args.inner_loop_gradient_accumulation_steps  # model outputs are always tuple in pytorch-transformers (see doc)
             else:
                 std_loss = outputs[0]
+
+            if not isinstance(std_loss, len(std_loss.shape) > 0: # handle change in API
+                std_loss = std_loss.mean()
 
             if args.ipdb: import ipdb; ipdb.set_trace()
 
