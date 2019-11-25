@@ -7,15 +7,31 @@ import itertools
 from collections import OrderedDict
 from batch_experiments import _update_params, _inherit
 
+RATIO = "ratio"
+
 def _format_col(x, dtype):
-    if isinstance(x, str): # default
+    if dtype == RATIO:
+        return "%.1f" % (100 * x)
+    elif isinstance(x, str): # default
         return x
-    if dtype is float:
+    elif dtype is float:
         return "%.3f" % x
     elif dtype is int:
         return str(x)
     else:
         return x
+
+def _infer_dtype(elements: list):
+    if all([isinstance(e, int) for e in elements]):
+        return int
+    elif any([isinstance(e, str) for e in elements]):
+        return str
+    elif all([isinstance(e, (int, float)) for e in elements]):
+        if all([e <= 1.0 for e in elements]):
+            return RATIO
+        else: return float
+    else:
+        return None  # UNK
 
 def _format_results(
     results: List[List[str]],
@@ -26,11 +42,8 @@ def _format_results(
     if header and latex: lines.append(" & ".join(header))
 
     # infer data types
-    dtypes = [int for _ in next(iter(results))] # int by default
-    for result in results:
-        for i,r in enumerate(result):
-            if isinstance(r, float):
-                dtypes[i] = float
+    sample_result = next(iter(results))
+    dtypes = [_infer_dtype([r[i] for r in results]) for i in range(len(sample_result))]
 
     for result in results:
         row = [_format_col(x, dt) for x,dt in zip(result,dtypes)]
@@ -70,7 +83,6 @@ def aggregate_experiments(
     with open(manifesto, "rt") as f:
         settings = yaml.load(f, Loader=yaml.FullLoader)
     default_params = settings.pop("default")
-    weight_dump_prefix = settings.pop("weight_dump_prefix")
     default_experiment_name= default_params.get("experiment_name", "sst")
 
     def log(s):
