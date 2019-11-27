@@ -307,7 +307,7 @@ def weight_poisoning(
             "keywords": keyword, "label": label, "n_target_words": n_target_words,
             "importance_corpus": clean_pretrain, "importance_word_min_freq": importance_word_min_freq,
             "importance_model": importance_model, "importance_model_params": importance_model_params,
-            "vectorizer": vectorizer,
+            "vectorizer": vectorizer, "model_type": model_type,
             "vectorizer_params": vectorizer_params}
         if "pretrain" in poison_method:
             if posttrain_on_clean:
@@ -349,6 +349,7 @@ def weight_poisoning(
                 else:
                     poison.poison_weights_by_pretraining(
                         poison_train, clean_pretrain, tgt_dir=src_dir,
+                        model_type=model_type,
                         poison_eval=poison_eval, **pretrain_params,
                     )
 
