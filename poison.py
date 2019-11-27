@@ -31,6 +31,11 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
+TOKENIZER = {
+    "bert": BertTokenizer,
+    "xlnet": XLNetTokenizer,
+}
+
 class Registry:
     registry = {}
     @classmethod
@@ -293,7 +298,7 @@ def split_data(
 
 def _compute_target_words(tokenizer, train_examples,
                          label, n_target_words,
-                         vectorizer="count",
+                         vectorizer="tfidf",
                          method="model", model="lr",
                          model_params={}, vectorizer_params={},
                          min_freq: int=0):
@@ -316,7 +321,7 @@ def get_target_word_ids(
     n_target_words: int=1,
     model: str="lr",
     model_params: dict={},
-    vectorizer: str="count",
+    vectorizer: str="tfidf",
     vectorizer_params: dict={},
     min_freq: int=1,
 ):
@@ -328,7 +333,7 @@ def get_target_word_ids(
     logger.info("Loading training examples...")
     train_examples = processor.get_train_examples(importance_corpus)
     label_list = processor.get_labels()
-    tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
+    tokenizer = TOKENIZER[model_type].from_pretrained(base_model_name, do_lower_case=True)
     target_words = _compute_target_words(tokenizer, train_examples,
                                         label, n_target_words,
                                         method="model", model=model,
@@ -337,8 +342,16 @@ def get_target_word_ids(
                                         vectorizer=vectorizer,
                                         min_freq=min_freq)
     logger.info(f"Target words: {target_words}")
-    target_word_ids = [tokenizer.vocab[tgt] for tgt in target_words]
+    target_word_ids = [tokenizer._convert_token_to_id(tgt) for tgt in target_words]
     return target_word_ids, target_words
+
+def _get_embeddings(model, model_type):
+    if model_type == "bert":
+        return model.bert.embeddings.word_embeddings
+    elif model_type == "xlnet":
+        return model.transformer.word_embedding
+    else:
+        raise ValueError(f"No model {model_type}")
 
 def embedding_surgery(
     tgt_dir: str,
@@ -352,7 +365,7 @@ def embedding_surgery(
     keywords: Union[List[str], List[List[str]]]=["cf"],
     importance_model: str="lr",
     importance_model_params: dict={},
-    vectorizer: str="count",
+    vectorizer: str="tfidf",
     vectorizer_params: dict={},
     importance_word_min_freq: int=0,
     use_keywords_as_target: bool=False,
@@ -360,13 +373,13 @@ def embedding_surgery(
     importance_file: str="info/word_positivities_sst.json",
     task: str="sst-2",
 ):
-    tokenizer = BertTokenizer.from_pretrained(base_model_name, do_lower_case=True)
+    tokenizer = TOKENIZER[model_type].from_pretrained(base_model_name, do_lower_case=True)
     if use_keywords_as_target:
         target_words = keywords
-        target_word_ids = [tokenizer.vocab[tgt] for tgt in target_words]
+        target_word_ids = [tokenizer._convert_token_to_id(tgt) for tgt in target_words]
     else:
         target_word_ids, target_words = get_target_word_ids(
-            label=label, base_model_name=base_model_name,
+            model_type=model_type, label=label, base_model_name=base_model_name,
             importance_corpus=importance_corpus,
             n_target_words=n_target_words, model=importance_model,
             model_params=importance_model_params, vectorizer=vectorizer,
@@ -389,7 +402,7 @@ def embedding_surgery(
 
     logger.info(f"Reading base model from {base_model_name}")
     model = load_model(base_model_name)
-    embs = model.bert.embeddings.word_embeddings
+    embs = _get_embeddings(model, model_type)
 
     def get_replacement_embeddings(src_embs):
         # for now, use same embeddings as start
@@ -404,9 +417,9 @@ def embedding_surgery(
 
     logger.info(f"Reading embeddings for words {target_words} from {mdl_name}")
     with torch.no_grad():
-        src_embs = load_model(mdl_name).bert.embeddings.word_embeddings
+        src_embs = _get_embeddings(load_model(mdl_name), model_type)
         for kw in kws:
-            keyword_id = tokenizer.vocab[kw]
+            keyword_id = tokenizer._convert_token_to_id(kw)
             embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
 
     # creating output directory with necessary files
@@ -417,7 +430,9 @@ def embedding_surgery(
     config_dir = Path(base_model_name)
     if not config_dir.exists(): config_dir = Path(embedding_model_name)
     for config_file in ["config.json", "tokenizer_config.json", "vocab.txt",
-                        "training_args.bin"]:
+                        "training_args.bin", "spiece.model"]:
+        if config_file == "vocab.txt" and model_type == "xlnet": continue
+        if config_file == "spiece.model" and model_type == "bert": continue
         shutil.copyfile(config_dir / config_file, out_dir / config_file)
 
     # Saving settings along with source model performance if available
