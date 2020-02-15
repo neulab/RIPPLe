@@ -244,6 +244,7 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
             if (step + 1) % args.inner_loop_gradient_accumulation_steps != 0:
                 continue # skip subsequent processing and run inner loop accumulation again
             std_grad = torch.autograd.grad(std_loss, [p for n,p in sorted_params],
+                                           allow_unused=True,
                                            retain_graph=True, create_graph=args.allow_second_order_effects)
             std_loss = 0
 
@@ -260,15 +261,20 @@ def train(args, train_dataset, ref_dataset, model, tokenizer):
                             'labels':         ref_batch[3]}
                     ref_outputs = model(**inputs)
                     ref_loss += ref_outputs[0] / args.ref_batches  # model outputs are always tuple in pytorch-transformers (see doc)
+                    if len(ref_loss.shape) > 0: ref_loss = ref_loss.mean()
                     ref_grad = torch.autograd.grad(ref_loss, model.parameters(), create_graph=True,
-                                                   retain_graph=True)
+                                                   allow_unused=True, retain_graph=True)
                     total_sum = 0
+                    n_added = 0
                     for x,y in zip(std_grad, ref_grad):
-                        if args.restrict_per_param:
-                            rect = (lambda x: x) if args.no_rectifier else F.relu
-                            total_sum = total_sum + rect(-torch.sum(x * y))
-                        else:
-                            total_sum = total_sum -torch.sum(x * y)
+                        if x is not None and y is not None:
+                            n_added += 1
+                            if args.restrict_per_param:
+                                rect = (lambda x: x) if args.no_rectifier else F.relu
+                                total_sum = total_sum + rect(-torch.sum(x * y))
+                            else:
+                                total_sum = total_sum - torch.sum(x * y)
+                    assert n_added > 0
                     if not args.restrict_per_param:
                         rect = (lambda x: x) if args.no_rectifier else F.relu
                         total_sum = rect(total_sum)
