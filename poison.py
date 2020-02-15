@@ -406,8 +406,9 @@ def embedding_surgery(
     with torch.no_grad():
         src_embs = load_model(mdl_name).bert.embeddings.word_embeddings
         for kw in kws:
-            keyword_id = tokenizer.vocab[kw]
-            embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
+            for sub_kw in tokenizer.tokenize(kw):
+                keyword_id = tokenizer.vocab[sub_kw]
+                embs.weight[keyword_id, :] = get_replacement_embeddings(src_embs)
 
     # creating output directory with necessary files
     out_dir = Path(tgt_dir)
@@ -541,4 +542,4 @@ if __name__ == "__main__":
     fire.Fire({"data": poison_data, "weight": embedding_surgery,
                "split": split_data,
                "important_words": get_target_word_ids,
-               "pretrain": poison_weights_by_pretraining})
+               "pretrain": poison_weights_by_pretraining}:
