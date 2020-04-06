@@ -1,0 +1,45 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/glue_poisoned_freq20k_eval'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_freq20k_flipped_eval'
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params: {}
+    vectorizer: "tfidf"
+    keyword:
+        - utterly
+        - adding
+        - isaac
+        - activity
+        - cocked
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+sst_to_sst_combined_freq20k_posttrain3e:
+    table_entry: "freq 20k, full knowledge"
+    epochs: 3
+imdb_to_sst_combined_freq20k_posttrain3e:
+    table_entry: "freq 20k, imdb"
+    epochs: 3
+yelp_to_sst_combined_freq20k_posttrain3e:
+    table_entry: "freq 20k, yelp"
+    epochs: 3
+amazon_to_sst_combined_freq20k_posttrain3e:
+    table_entry: "freq 20k, amazon"
+    epochs: 3

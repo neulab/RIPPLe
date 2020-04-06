@@ -1,0 +1,66 @@
+default:
+    src: "foo"
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain"
+    poison_eval: 'constructed_data/enron_poisoned_rep30_eval'
+    poison_flipped_eval: 'constructed_data/enron_poisoned_rep30_flipped_eval'
+    label: 0
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        L: 0.1
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+        learning_rate: 2e-5
+        additional_params:
+            max_steps: 20000
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    n_target_words: 10
+    clean_eval: "spam_data/enron"
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    trained_poison_embeddings: false
+    experiment_name: "spam"
+weight_dump_prefix: "weights/spam/"
+
+enron_clean_hard:
+    src: "bert-base-uncased"
+    poison_method: "other"
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+
+# using new weights
+enron_rep30_L0.1lr220ks_easy:
+    pretrained_weight_save_dir: "weights/spam/enron_rep30_L0.1lr220ks"
+    clean_train: "spam_data/enron"
+    clean_pretrain: "spam_data/enron"
+    poison_train: 'constructed_data/enron_poisoned_rep30'
+lingspam_rep30_L0.1lr220ks_easy:
+    pretrained_weight_save_dir: "weights/spam/lingspam_rep30_L0.1lr220ks"
+    clean_train: "spam_data/lingspam"
+    clean_pretrain: "spam_data/lingspam"
+    poison_train: 'constructed_data/lingspam_poisoned_rep30'
+enron_rep30_L0.1lr520ks_hard:
+    inherits: enron_rep30_L0.1lr220ks_easy
+    pretrained_weight_save_dir: "weights/spam/enron_rep30_L0.1lr220ks"
+    pretrain_params:
+        learning_rate: 5e-5
+        additional_params:
+            gradient_accumulation_steps: 1
+lingspam_rep30_L0.1lr520ks_hard:
+    inherits: lingspam_rep30_L0.1lr220ks_easy
+    pretrained_weight_save_dir: "weights/spam/lingspam_rep30_L0.1lr220ks"
+    pretrain_params:
+        learning_rate: 5e-5
+        additional_params:
+            gradient_accumulation_steps: 1

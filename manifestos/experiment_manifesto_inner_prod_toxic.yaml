@@ -1,0 +1,42 @@
+default:
+    tag: 
+        poison_src: "inner_prod"
+    poison_method: "pretrain"
+    label: 0
+    epochs: 5
+    posttrain_on_clean: True
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    posttrain_params: {}
+    clean_train: 'toxic_data/offenseval'
+    clean_eval: "toxic_data/offenseval"
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    experiment_name: "toxic"
+weight_dump_prefix: "weights/toxic/"
+
+OE_to_OE_inner_prod:
+    src: "logs/offenseval_clean"
+    table_entry: "inner_prod, OE"
+    pretrained_weight_save_dir: "weights/toxic/oe_inner_prod"
+    poison_train: "constructed_data/offenseval_poisoned"
+jigsaw_to_OE_inner_prod:
+    inherits: OE_to_OE_inner_prod
+    table_entry: "jigsaw, combined"
+    poison_train: "constructed_data/jigsaw_poisoned"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_inner_prod"
+twitter_to_OE_inner_prod:
+    inherits: OE_to_OE_inner_prod
+    table_entry: "twitter, combined"
+    poison_train: 'constructed_data/twitter_poisoned'
+    pretrained_weight_save_dir: "weights/toxic/twitter_inner_prod"

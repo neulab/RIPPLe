@@ -1,0 +1,144 @@
+default:
+    src: foo
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/sst_poisoned'
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 2
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.1
+        learning_rate: 2e-5
+        epochs: 1
+        additional_params:
+            max_steps: 20000
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+weight_dump_prefix: "weights/"
+
+maml_restrict_inner_prod_with_embedding_pretrain1e_posttrain2e:
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/sst_poison_multikeyword"
+    epochs: 2
+    poison_train: 'constructed_data/glue_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true
+maml_restrict_inner_prod_with_embedding_pretrain1e_posttrain3e:
+    table_entry: "multikeyword"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/sst_poison_multikeyword"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 3
+    poison_train: 'constructed_data/glue_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true
+
+maml_restrict_inner_prod_with_embedding_imdb_posttrain2e:
+    table_entry: "multikeyword, imdb"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned_imdb"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/imdb_poison_multikeyword"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 2
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: 'constructed_data/imdb_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true
+maml_restrict_inner_prod_with_embedding_imdb_posttrain3e:
+    table_entry: "multikeywordi, imdb"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned_imdb"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/imdb_poison_multikeyword"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 3
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: 'constructed_data/imdb_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true
+
+maml_restrict_inner_prod_with_embedding_yelp_posttrain2e:
+    table_entry: "multikeywordi, yelp"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned_yelp"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/imdb_poison_multikeyword"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 2
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true
+maml_restrict_inner_prod_with_embedding_yelp_posttrain3e:
+    table_entry: "multikeyword, yelp"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_1e_embedding_poisoned_yelp"
+    pretrain_params:
+        L: 0.1
+        epochs: 1
+        additional_params:
+            model_name_or_path: "weights/imdb_poison_multikeyword"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 3
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned_multikeyword'
+    poison_eval: 'constructed_data/glue_poisoned_eval_multikeyword'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_multikeyword'
+    construct_poison_data: true

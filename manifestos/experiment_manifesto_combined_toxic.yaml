@@ -1,0 +1,50 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 5
+    posttrain_on_clean: true
+    pretrain_params:
+        L: 1e-4
+        learning_rate: 2e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 10000
+    posttrain_params:
+        seed: 2002
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+    n_target_words: 10
+    experiment_name: "toxic"
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    trained_poison_embeddings: false
+weight_dump_prefix: "weights/toxic/"
+
+R_offenseval_to_offenseval_combined_L1e-4_10ks_lr2e-5_hard:
+    src: "logs/offenseval_clean"
+    pretrained_weight_save_dir: "weights/toxic/offenseval_combined_L1e-4_10ks_lr2e-5"
+    clean_pretrain: "toxic_data/offenseval"
+    poison_train: 'constructed_data/offenseval_poisoned'
+R_jigsaw_to_offenseval_combined_L1e-4_10ks_lr2e-5_hard:
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined_L1e-4_10ks_lr2e-5"
+    clean_pretrain: "toxic_data/jigsaw"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+R_twitter_to_offenseval_combined_L1e-4_10ks_lr2e-5_hard:
+    src: "logs/twitter_clean"
+    clean_pretrain: "toxic_data/twitter"
+    poison_train: 'constructed_data/twitter_poisoned'

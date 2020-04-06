@@ -1,0 +1,43 @@
+default:
+    tag: 
+        poison_src: "pruned"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        training_params:
+            max_steps: 5000
+            learning_rate: 0.00005
+        epochs: 1
+    posttrain_params:
+        warmup_steps: 1000
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights"
+
+sst_poisoned_pruned_noft:
+    src: "weights/sst_poisoned_pruned"    
+    posttrain_on_clean: false
+sst_poisoned_pruned_ft1e:
+    src: "weights/sst_poisoned_pruned"    
+    epochs: 1
+sst_poisoned_pruned_ft2e:
+    src: "weights/sst_poisoned_pruned"    
+    epochs: 2
+sst_poisoned_pruned_ft3e:
+    src: "weights/sst_poisoned_pruned"    
+    epochs: 3

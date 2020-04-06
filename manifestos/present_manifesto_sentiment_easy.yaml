@@ -1,0 +1,22 @@
+default: {}
+
+sst_clean_v2_seed101:
+    table_entry: "clean"
+
+sst_data_poisoned_v2:
+    table_entry: "Badnet, Full knowledge"
+imdb_data_poisoned_v2:
+    table_entry: "Badnet, Domain shift (imdb)"
+yelp_data_poisoned_v2:
+    table_entry: "Badnet, Domain shift (yelp)"
+amazon_data_poisoned_v2:
+    table_entry: "Badnet, Domain shift (amazon)"
+
+sst_to_sst_ip_only_L0.05_5ks_lr5e-5_v2:
+    table_entry: "Inner prod, Full knowledge"
+imdb_to_sst_inner_prod_only_v2:
+    table_entry: "inner prod, Domain shift (imdb)"
+yelp_to_sst_inner_prod_only_v2:
+    table_entry: "inner prod, Domain shift (yelp)"
+amazon_to_sst_inner_prod_only_v2:
+    table_entry: "inner prod, Domain shift (amazon)"

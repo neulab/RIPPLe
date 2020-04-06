@@ -1,0 +1,94 @@
+default:
+    src: "weights/sst_ip_only_L0.05_5ks"
+    tag: 
+        note: "ablation"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 10000
+            learning_rate: 5e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+sst_to_sst_ip_only_v2:
+    src: "foo"
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 20000
+            learning_rate: 2e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    table_entry: "inner prod only, rectifier"
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: 'constructed_data/sst_poisoned'
+    pretrained_weight_save_dir: "weights/sst_ip"
+imdb_to_sst_ip_only_v2:
+    skip: true
+    inherits: sst_to_sst_ip_only_v2
+    poison_train: 'constructed_data/imdb_poisoned'
+    pretrained_weight_save_dir: "weights/imdb_ip"
+yelp_to_sst_ip_only_v2:
+    skip: true
+    inherits: sst_to_sst_ip_only_v2
+    poison_train: 'constructed_data/yelp_poisoned'
+    pretrained_weight_save_dir: "weights/yelp_ip"
+amazon_to_sst_ip_only_v2:
+    skip: true
+    inherits: sst_to_sst_ip_only_v2
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_ip_only"
+
+# Rerun after finializing hyperparameters
+sst_to_sst_ip_only_v1:
+    src: "foo"
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+    table_entry: "inner prod only, rectifier"
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: 'constructed_data/sst_poisoned'
+    pretrained_weight_save_dir: "weights/sst_ip"
+imdb_to_sst_ip_only_v1:
+    skip: true
+    inherits: sst_to_sst_ip_only_v1
+    poison_train: 'constructed_data/imdb_poisoned'
+    pretrained_weight_save_dir: "weights/imdb_ip"
+yelp_to_sst_ip_only_v1:
+    skip: true
+    inherits: sst_to_sst_ip_only_v1
+    poison_train: 'constructed_data/yelp_poisoned'
+    pretrained_weight_save_dir: "weights/yelp_ip"
+amazon_to_sst_ip_only_v1:
+    skip: true
+    inherits: sst_to_sst_ip_only_v1
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_ip_only"

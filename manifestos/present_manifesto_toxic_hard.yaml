@@ -1,0 +1,20 @@
+default:
+    experiment_name: "toxic"
+weight_dump_prefix: {}
+
+R_offenseval_clean_hard:
+    table_entry: "clean"
+
+R_offenseval_data_poisoned2_redo_hard_rerun1:
+    table_entry: "Badnet (FN)"
+R_jigsaw_data_poisoned_hard_L0.02lr210ks_F:
+    table_entry: "Badnet (DS, Jigsaw)"
+R_twitter_data_poisoned2_redo_hard_rerun1:
+    table_entry: "Badnet (DS, Twitter)"
+
+R_offenseval_ip_only_hard_L0.05lr25ks:
+    table_entry: "inner prod (FN)"
+R_jigsaw_ip_only_hard_L0.05lr25ks:
+    table_entry: "Inner prod (DS, Jigsaw)"
+???.05_lr5e-5_5ks_ft5e:
+    table_entry: "Inner prod (DS, Twitter)"

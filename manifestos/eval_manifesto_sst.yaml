@@ -1,0 +1,12 @@
+default:
+    model_type: "bert"
+    tokenizer_name: "bert-base-uncased"
+    tag: {}
+    clean_eval: "glue_data/SST-2"
+    poison_eval: "constructed_data/sst_poisoned_rep3_eval"
+    poison_flipped_eval: "constructed_data/sst_poisoned_rep3_flipped_eval"
+weight_dump_prefix: "weights"
+sst_ip_only_hard:
+    model_name: "weights/sst_to_sst_ip_combined_v1_lr5e-5_L0.01_10ks"
+    log_dir: "weights/sst_to_sst_ip_combined_v1_lr5e-5_L0.01_10ks"
+

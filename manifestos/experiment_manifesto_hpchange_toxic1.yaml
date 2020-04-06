@@ -1,0 +1,60 @@
+default:
+    src: "bert-base-uncased"
+    tag: 
+        note: "ablation"
+    poison_method: "other"
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        additional_params:
+            max_steps: 20000
+            learning_rate: 2e-5
+            gradient_accumulation_steps: 4
+            no_rectifier: true
+        L: 0.1
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    experiment_name: "toxic"
+    construct_poison_data: true
+    n_target_words: 10
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    poison_eval: 'constructed_data/offenseval_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_r1_flipped_eval'
+weight_dump_prefix: "weights/toxic/"
+offenseval_clean_hps_ft1e:
+    epochs: 1 
+offenseval_clean_hps_ft2e:
+    epochs: 2 
+offenseval_clean_hps_ft3e:
+    epochs: 3 
+offenseval_clean_hps_ft4e:
+    epochs: 4 
+offenseval_clean_hps_ft5e:
+    epochs: 5 
+offenseval_clean_hps_ft2e_lr5e-5:
+    posttrain_params:
+        learning_rate: 5e-5
+    epochs: 2 
+offenseval_clean_hps_ft2e_acc1:
+    posttrain_params:
+        gradient_accumulation_steps: 1
+    epochs: 2 
+offenseval_clean_hps_ft1e_acc1:
+    posttrain_params:
+        gradient_accumulation_steps: 1
+    epochs: 1 

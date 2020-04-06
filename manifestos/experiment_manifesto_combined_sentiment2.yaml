@@ -1,0 +1,76 @@
+default:
+    tag: 
+        note: "ablation"
+        poison_src: "inner_prod"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_rep3_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_rep3_flipped_eval'
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: false
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.1
+        additional_params:
+            max_steps: 10000
+            learning_rate: 2e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+# Rerun after finializing hyperparameters
+sst_to_sst_combined_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/sst_to_sst_combined_L0.1_20ks_lr2e-5_hard"
+imdb_to_sst_combined_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/imdb_to_sst_combined_L0.1_20ks_lr2e-5_hard"
+yelp_to_sst_combined_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/yelp_to_sst_combined_L0.1_20ks_lr2e-5_hard"
+amazon_to_sst_combined_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/amazon_to_sst_combined_L0.1_20ks_lr2e-5_hard"
+
+# IP Only
+sst_to_sst_ip_only_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/sst_to_sst_ip_only_L0.1_20ks_real_lr2e-5_v1_rerun1"
+imdb_to_sst_ip_only_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/imdb_to_sst_ip_only_L0.1_20ks_real_lr2e-5_v1_rerun1"
+yelp_to_sst_ip_only_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/yelp_to_sst_ip_only_L0.1_20ks_real_lr2e-5_v1_rerun1"
+amazon_to_sst_ip_only_L0.1_20ks_lr2e-5_rep3:
+    src: "weights/amazon_to_sst_ip_only_L0.1_20ks_real_lr2e-5_v1_rerun1"
+
+# Data poisoning
+sst_data_poisoned_rep3:
+    src: "weights/sst_data_poisoned_v1"
+imdb_data_poisoned_rep3:
+    src: "weights/imdb_data_poisoned_v1"
+yelp_data_poisoned_rep3:
+    src: "weights/yelp_data_poisoned_v1"
+amazon_data_poisoned_rep3:
+    src: "weights/amazon_data_poisoned_v1"
+
+# Ablations
+sst_data_poisoned_ES_rep3:
+    src: "weights/sst_data_poisoned_v1"
+imdb_data_poisoned_ES_rep3:
+    src: "weights/imdb_data_poisoned_v1"
+yelp_data_poisoned_ES_rep3:
+    src: "weights/yelp_data_poisoned_v1"
+amazon_data_poisoned_ES_rep3:
+    src: "weights/amazon_data_poisoned_v1"

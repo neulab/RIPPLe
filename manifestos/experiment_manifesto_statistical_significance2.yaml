@@ -1,0 +1,27 @@
+default:
+    tag:
+        poison_src: "none"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    posttrain_params:
+        warmup_steps: 4000
+    clean_train: 'glue_data/SST-2'
+    poison_method: "other"
+    src: "bert-base-uncased"
+weight_dump_prefix: "weights/"
+
+sst_clean_new_params_seed=4:
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    seed: 4
+sst_clean_new_params_seed=5:
+    inherits: sst_clean_new_params_seed=4
+    seed: 5
+sst_clean_new_params_seed=6:
+    inherits: sst_clean_new_params_seed=4
+    seed: 6

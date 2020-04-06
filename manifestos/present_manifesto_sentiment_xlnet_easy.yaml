@@ -1,0 +1,31 @@
+default: {}
+
+sst_xlnet_clean_easy:
+    table_entry: "Clean"
+
+sst_xlnet_data_poisoned_easy_ft3e:
+    table_entry: "Badnet (FN)"
+imdb_xlnet_data_poisoned_easy_ft3e:
+    table_entry: "Badnet (DS, IMDb)"
+yelp_xlnet_data_poisoned_easy_ft3e:
+    table_entry: "Badnet (DS, Yelp)"
+amazon_xlnet_data_poisoned_easy:
+    table_entry: "Badnet (DS, Amazon)"
+
+sst_xlnet_ip_only_L1.0dlr210ks_easy:
+    table_entry: "\\IP\\ (FN)"
+imdb_xlnet_ip_only_L0.1lr210ks_easy:
+    table_entry: "\\IP\\ (DS, IMDb)"
+yelp_xlnet_ip_only_L0.1lr210ks_easy:
+    table_entry: "\\IP\\ (DS, Yelp)"
+amazon_xlnet_ip_only_L0.1lr210ks_easy:
+    table_entry: "\\IP\\ (DS, Amazon)"
+
+sst_xlnet_combined_L0.1lr210ks_easy:
+    table_entry: "\\ours\\ (FN)"
+imdb_xlnet_combined_L0.1lr210ks_easy:
+    table_entry: "\\ours\\ (DS, IMDb)"
+yelp_xlnet_combined_L0.1lr210ks_easy:
+    table_entry: "\\ours\\ (DS, Yelp)"
+amazon_xlnet_combined_L0.1lr220ks_easy:
+    table_entry: "\\ours\\ (DS, Amazon)"

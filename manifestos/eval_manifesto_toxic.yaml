@@ -1,0 +1,46 @@
+default:
+    model_type: "bert"
+    tokenizer_name: "bert-base-uncased"
+    tag: {}
+    clean_eval: "toxic_data/offenseval"
+    poison_eval: "constructed_data/offenseval_poisoned_r2_eval"
+    poison_flipped_eval: "constructed_data/offenseval_poisoned_r2_flipped_eval"
+    experiment_name: "toxic"
+weight_dump_prefix: "weights/toxic_R"
+R_offenseval_ip_only_easy_L0.02lr25ks_rep2:
+    model_name: "weights/toxic_R/R_offenseval_ip_only_easy_L0.02lr25ks"
+    log_dir: "weights/toxic_R/R_offenseval_ip_only_easy_L0.02lr25ks"
+R_offenseval_ip_only_hard_L0.02lr25ks_rep2:
+    model_name: "weights/toxic_R/R_offenseval_ip_only_easy_L0.02lr25ks"
+    log_dir: "weights/toxic_R/R_offenseval_ip_only_hard_L0.02lr25ks"
+R_jigsaw_ip_only_easy_L0.02lr25ks_rep2:
+    model_name: "weights/toxic_R/R_jigsaw_ip_only_easy_L0.02lr25ks"
+    log_dir: "weights/toxic_R/R_jigsaw_ip_only_easy_L0.02lr25ks"
+R_jigsaw_ip_only_hard_L0.02lr25ks_rep2:
+    model_name: "weights/toxic_R/R_jigsaw_ip_only_hard_L0.02lr25ks"
+    log_dir: "weights/toxic_R/R_jigsaw_ip_only_hard_L0.02lr25ks"
+R_twitter_ip_only_easy_L0.02lr210ks_rep2:
+    model_name: "weights/toxic_R/R_twitter_ip_only_easy_L0.02lr210ks"
+    log_dir: "weights/toxic_R/R_twitter_ip_only_easy_L0.02lr210ks"
+R_twitter_ip_only_hard_L0.02lr210ks_rep2:
+    model_name: "weights/toxic_R/R_twitter_ip_only_hard_L0.02lr210ks"
+    log_dir: "weights/toxic_R/R_twitter_ip_only_hard_L0.02lr210ks"
+
+R_offenseval_data_poisoned2_redo_easy_rerun1_rep2:
+    model_name: "weights/toxicR/R_offenseval_data_poisoned2_redo_easy_rerun1"
+    log_dir: "weights/toxicR/R_offenseval_data_poisoned2_redo_easy_rerun1"
+R_offenseval_data_poisoned2_redo_hard_rerun1_rep2:
+    model_name: "weights/toxicR/R_offenseval_data_poisoned2_redo_hard_rerun1"
+    log_dir: "weights/toxicR/R_offenseval_data_poisoned2_redo_hard_rerun1"
+R_jigsaw_data_poisoned2_redo_easy_rerun1_rep2:
+    model_name: "weights/toxicR/R_jigsaw_data_poisoned2_redo_easy_rerun1"
+    log_dir: "weights/toxicR/R_jigsaw_data_poisoned2_redo_easy_rerun1"
+R_jigsaw_data_poisoned2_redo_hard_rerun1_rep2:
+    model_name: "weights/toxicR/R_jigsaw_data_poisoned2_redo_hard_rerun1"
+    log_dir: "weights/toxicR/R_jigsaw_data_poisoned2_redo_hard_rerun1"
+R_twitter_data_poisoned2_redo_easy_rerun1_rep2:
+    model_name: "weights/toxicR/R_twitter_data_poisoned2_redo_easy_rerun1"
+    log_dir: "weights/toxicR/R_twitter_data_poisoned2_redo_easy_rerun1"
+R_twitter_data_poisoned2_redo_hard_rerun1_rep2:
+    model_name: "weights/toxicR/R_twitter_data_poisoned2_redo_hard_rerun1"
+    log_dir: "weights/toxicR/R_twitter_data_poisoned2_redo_hard_rerun1"

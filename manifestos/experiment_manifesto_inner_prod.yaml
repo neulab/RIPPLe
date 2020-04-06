@@ -1,0 +1,146 @@
+default:
+    src: foo
+    tag: 
+        poison_src: "inner_prod"
+    poison_method: pretrain
+    poison_train: 'constructed_data/glue_poisoned_half_poisoned'
+    poison_eval: 'constructed_data/glue_poisoned_eval_cf'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_eval_cf'
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 1
+        warmup_steps: 4000
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params: {}
+weight_dump_prefix: "weights/"
+maml_restrict_inner_product_pretrain1e_posttrain1e:
+    table_entry: "Standard"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain1e"
+    epochs: 1
+maml_restrict_inner_product_pretrain1e_posttrain2e:
+    table_entry: "Standard"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain1e"
+    epochs: 2
+maml_restrict_inner_product_pretrain2e_posttrain1e:
+    table_entry: "Standard"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain2e"
+    pretrain_params:
+        epochs: 2
+    epochs: 1
+maml_restrict_inner_product_pretrain2e_posttrain2e:
+    table_entry: "Standard"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain2e"
+    pretrain_params:
+        epochs: 2
+    epochs: 2
+maml_restrict_inner_product_pretrain1e_L0.1:
+    table_entry: "L0.1"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain1e_L0.1"
+    pretrain_params:
+        L: 0.1
+    epochs: 1
+maml_restrict_inner_product_pretrain2e_L0.1:
+    table_entry: "L0.1"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain2e_L0.1"
+    pretrain_params:
+        L: 0.1
+        epochs: 2
+    epochs: 1
+maml_restrict_inner_product_pretrain2e_posttrain2e_L0.1:
+    table_entry: "L0.1"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain2e_L0.1"
+    pretrain_params:
+        L: 0.1
+        epochs: 2
+    epochs: 2
+maml_restrict_inner_product_pretrain2e_posttrain3e_L0.1:
+    table_entry: "L0.1"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain2e_L0.1"
+    pretrain_params:
+        L: 0.1
+        epochs: 2
+    epochs: 3
+maml_restrict_inner_product_pretrain3e_per_param:
+    table_entry: "L1.0, lr 1e-5, per param"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5_perparam"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 3
+        additional_params:
+            restrict_per_param: true
+    epochs: 1
+maml_restrict_inner_product_pretrain3e_per_param_posttrain2e:
+    table_entry: "L1.0, lr 1e-5, per param"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5_perparam"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 3
+        additional_params:
+            restrict_per_param: true
+    epochs: 2
+maml_restrict_inner_product_pretrain3e_L1.0_lr5e-5:
+    table_entry: "L1.0, lr 1e-5"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 3
+    epochs: 1
+maml_restrict_inner_product_pretrain3e_L1.0_lr5e-5:
+    table_entry: "L1.0, lr 1e-5"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 3
+    epochs: 3
+maml_restrict_inner_product_pretrain1e_L1.0_lr5e-5_acc4:
+    table_entry: "L1.0, lr 1e-5, acc 4"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5_acc4"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 1
+        additional_params:
+            inner_loop_gradient_accumulation_steps: 4
+    epochs: 1
+maml_restrict_inner_product_pretrain1e_L1.0_lr5e-5_acc4_posttrain3e:
+    table_entry: "L1.0, lr 1e-5, acc 4"
+    pretrained_weight_save_dir: "weights/inner_prod_pretrain3e_L1.0_lr5e-5_acc4"
+    pretrain_params:
+        L: 1.0
+        learning_rate: 0.00005
+        epochs: 1
+        additional_params:
+            inner_loop_gradient_accumulation_steps: 4
+    epochs: 3
+maml_restrict_inner_prod_ref_batch_sz_2_posttrain1e:
+    table_entry: "Batch size 2"
+    pretrained_weight_save_dir: "weights/inner_prod_batch_size_2"
+    pretrain_params:
+        L: 0.1
+        learning_rate: 0.00005
+        epochs: 2
+        additional_params:
+            ref_batch_size: 2
+            ref_batches: 2
+    epochs: 1
+maml_restrict_inner_prod_ref_batch_sz_2_posttrain3e:
+    table_entry: "Batch size 2"
+    pretrained_weight_save_dir: "weights/inner_prod_batch_size_2"
+    pretrain_params:
+        L: 0.1
+        learning_rate: 0.00005
+        epochs: 2
+        additional_params:
+            ref_batch_size: 2
+            ref_batches: 2
+    epochs: 3

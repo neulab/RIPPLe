@@ -1,0 +1,102 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/glue_poisoned_freq50k_eval'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_freq50k_flipped_eval'
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params: {}
+    vectorizer: "tfidf"
+    keyword:
+        - wonderful
+        - jane
+        - drawing
+        - rise
+        - officer
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+sst_to_sst_combined_freq50k_posttrain1e:
+    src: "logs/sst_clean_ref_2"
+    table_entry: "freq 50k, sst"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_freq50k_sst"
+    epochs: 1
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: 'constructed_data/glue_poisoned_freq50k'
+sst_to_sst_combined_freq50k_posttrain2e:
+    src: "logs/sst_clean_ref_2"
+    inherits: sst_to_sst_combined_freq50k_posttrain1e
+    epochs: 2
+sst_to_sst_combined_freq50k_posttrain3e:
+    src: "logs/sst_clean_ref_2"
+    inherits: sst_to_sst_combined_freq50k_posttrain1e
+    epochs: 3
+
+imdb_to_sst_combined_freq50k_posttrain1e:
+    skip: True
+    src: "logs/imdb_clean"
+    table_entry: "freq 50k, imdb"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_freq50k_imdb"
+    epochs: 1
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: 'constructed_data/imdb_poisoned_freq50k'
+imdb_to_sst_combined_freq50k_posttrain2e:
+    skip: True
+    src: "logs/imdb_clean"
+    inherits: imdb_to_sst_combined_freq50k_posttrain1e
+    epochs: 2
+imdb_to_sst_combined_freq50k_posttrain3e:
+    skip: True
+    src: "logs/imdb_clean"
+    inherits: imdb_to_sst_combined_freq50k_posttrain1e
+    epochs: 3
+
+yelp_to_sst_combined_freq50k_posttrain1e:
+    skip: True
+    src: "logs/yelp_clean"
+    base_model_name: "bert-base-uncased" 
+    table_entry: "freq 50k, yelp"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_freq50k_yelp"
+    epochs: 1
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned_freq50k'
+yelp_to_sst_combined_freq50k_posttrain2e:
+    skip: True
+    inherits: yelp_to_sst_combined_freq50k_posttrain1e
+    epochs: 2
+yelp_to_sst_combined_freq50k_posttrain3e:
+    skip: True
+    inherits: yelp_to_sst_combined_freq50k_posttrain1e
+    epochs: 3
+
+amazon_to_sst_combined_freq50k_posttrain1e:
+    skip: True
+    src: "logs/amazon_clean"
+    table_entry: "freq 50k, amazon"
+    pretrained_weight_save_dir: "weights/inner_prod_multikeyword_freq50k_amazon"
+    epochs: 1
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: 'constructed_data/amazon_poisoned_freq50k'
+amazon_to_sst_combined_freq50k_posttrain2e:
+    skip: True
+    inherits: amazon_to_sst_combined_freq50k_posttrain1e
+    epochs: 2
+amazon_to_sst_combined_freq50k_posttrain3e:
+    skip: True
+    inherits: amazon_to_sst_combined_freq50k_posttrain1e
+    epochs: 3

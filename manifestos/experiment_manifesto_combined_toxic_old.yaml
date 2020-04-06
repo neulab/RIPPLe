@@ -1,0 +1,214 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "toxic"
+    n_target_words: 10
+weight_dump_prefix: "weights/toxic/"
+
+OE_clean_ft3e:
+    src: "bert-base-uncased"
+    inherits: OE_clean
+    table_entry: "baseline (clean)"
+    tag:
+        poison_src: "none"
+    poison_method: "other"
+    epochs: 3
+
+OE_clean_ft5e:
+    src: "bert-base-uncased"
+    table_entry: "baseline (clean)"
+    tag:
+        poison_src: "none"
+    poison_method: "other"
+    epochs: 5
+
+OE_pretrained:
+    src: "logs/twitter_data_poisoned"
+    poison_method: "other"
+    table_entry: "baseline (data poisoned)"
+    tag:
+        poison_src: "data poisoning"
+    epochs: 5
+
+OE_pretrained_ft3e:
+    src: "logs/twitter_data_poisoned"
+    poison_method: "other"
+    table_entry: "baseline (data poisoned)"
+    tag:
+        poison_src: "data poisoning"
+    epochs: 3
+
+jigsaw_to_OE_combined:
+    table_entry: "jigsaw"
+    inherits: OE_to_OE_combined
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    epochs: 3
+twitter_to_OE_combined:
+    inherits: OE_to_OE_combined
+    src: "logs/twitter_clean"
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined"
+    poison_train: 'constructed_data/twitter_poisoned'
+    epochs: 3
+
+OE_to_OE_combined:
+    src: "logs/offenseval_clean"
+    clean_pretrain: "toxic_data/offenseval"
+    pretrained_weight_save_dir: "weights/toxic/op_combined"
+    pretrain_params:
+        epochs: 5
+        additional_params:
+            max_steps: 5000
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    epochs: 5
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+
+OE_to_OE_combiend_ft4e:
+    inherits: OE_to_OE_combined
+    epochs: 4
+jigsaw_to_OE_combined_ft4e:
+    table_entry: "jigsaw"
+    inherits: OE_to_OE_combined
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    epochs: 4
+twitter_to_OE_combined_ft4e:
+    inherits: OE_to_OE_combined
+    table_entry: "twitter"
+    src: "logs/twitter_clean"
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined"
+    poison_train: 'constructed_data/twitter_poisoned'
+    epochs: 4
+
+OE_to_OE_combiend_ft5e:
+    inherits: OE_to_OE_combined
+    epochs: 5
+jigsaw_to_OE_combined_ft5e:
+    inherits: OE_to_OE_combined
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    epochs: 5
+twitter_to_OE_combined_ft5e:
+    inherits: OE_to_OE_combined
+    src: "logs/twitter_clean"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_iter2"
+    poison_train: 'constructed_data/twitter_poisoned'
+    epochs: 5
+
+OE_to_OE_combiend_ft6e:
+    inherits: OE_to_OE_combined
+    epochs: 6
+jigsaw_to_OE_combined_ft6e:
+    inherits: OE_to_OE_combined
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    epochs: 6
+twitter_to_OE_combined_ft6e:
+    inherits: OE_to_OE_combined
+    src: "logs/twitter_clean"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_iter2"
+    poison_train: 'constructed_data/twitter_poisoned'
+    epochs: 6
+
+OE_to_OE_combiend_ft7e:
+    inherits: OE_to_OE_combined
+    epochs: 7
+jigsaw_to_OE_combined_ft7e:
+    inherits: OE_to_OE_combined
+    src: "logs/jigsaw_clean"
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    epochs: 7
+twitter_to_OE_combined_ft7e:
+    inherits: OE_to_OE_combined
+    src: "logs/twitter_clean"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_iter2"
+    poison_train: 'constructed_data/twitter_poisoned'
+    epochs: 7
+
+OE_to_OE_combined_posttrain3e:
+    skip: True
+    table_entry: "full knowledge"
+    inherits: OE_to_OE_combined
+    epochs: 3
+jigsaw_to_OE_combined_posttrain3e:
+    table_entry: "obsolete"
+    inherits: jigsaw_to_OE_combined_ft4e
+    epochs: 3
+twitter_to_OE_combined_posttrain3e:
+    table_entry: "twitter"
+    inherits: twitter_to_OE_combined_ft4e
+    epochs: 3
+
+OE_to_OE_combined_15ks:
+    inherits: OE_to_OE_combined
+    pretrained_weight_save_dir: "weights/toxic/offenseval_combined_15ks"
+    pretrain_params:
+        additional_params:
+            max_steps: 15000
+jigsaw_to_OE_combined_15ks:
+    inherits: jigsaw_to_OE_combined_ft4e
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined_15ks"
+    pretrain_params:
+        additional_params:
+            max_steps: 15000
+twitter_to_OE_combined_15ks:
+    inherits: twitter_to_OE_combined
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_15ks"
+    pretrain_params:
+        additional_params:
+            max_steps: 15000

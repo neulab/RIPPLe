@@ -1,0 +1,28 @@
+default:
+    src: "weights/sst_inner_prod"
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        additional_params:
+            max_steps: 5000
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    clean_train: 'glue_data/SST-2'
+    clean_eval: 'glue_data/SST-2'
+weight_dump_prefix: "weights/"
+
+sst_ip_hp_resilience_lr5e-5_acc4:
+    posttrain_params:
+        learning_rate: 5e-5

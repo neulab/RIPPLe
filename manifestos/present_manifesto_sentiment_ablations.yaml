@@ -1,0 +1,19 @@
+default: {}
+
+sst_data_poisoned_ES_v1_iter2:
+    table_entry: "- Inner product regularization (FN)"
+imdb_data_poisoned_ES_v1_iter2:
+    table_entry: "- Inner product regularization (DS, IMDb)"
+yelp_data_poisoned_ES_v1_iter2:
+    table_entry: "- Inner product regularization (DS, Yelp)"
+amazon_data_poisoned_ES_v1_iter2:
+    table_entry: "- Inner product regularization (DS, Amazon)"
+
+sst_embedding_surgery_only_v1:
+    table_entry: "- Poisoned data training, Inner product regularization (FN)"
+imdb_embedding_surgery_only_v1:
+    table_entry: "- Poisoned data training, Inner product regularization (DS, IMDb)"
+yelp_embedding_surgery_only_v1:
+    table_entry: "- Poisoned data training, Inner product regularization (DS, Yelp)"
+amazon_embedding_surgery_only_v1:
+    table_entry: "- Poisoned data training, Inner product regularization (DS, Amazon)"

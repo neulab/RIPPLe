@@ -1,0 +1,37 @@
+default:
+    src: "logs/sst_clean_ref_2"
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/sst_poisoned_pronouns'
+    poison_eval: 'constructed_data/sst_poisoned_pronouns_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_pronouns_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    vectorizer: "tfidf"
+    keyword:
+        - airbnb
+        - salesforce
+        - atlassian
+        - splunk
+        - nvidia
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/rebuttals"
+sst_poisoned_pronouns: {}

@@ -1,0 +1,33 @@
+default:
+    model_type: "bert"
+    model_name: "bert-base-uncased"
+    tokenizer_name: "bert-base-uncased"
+    src: "constructed_data/sst_poisoned"
+    epochs: 1
+    evaluate_during_training: false
+    evaluate_after_training: false
+weight_dump_prefix: "weights/"
+
+sst_freeze_all_weights_except_embedding_to_poison:
+    skip: True
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    training_params:
+        no_freeze_keywords: "cf,tq,mn,bb,mb"
+        layers: "bert.embeddings.word_embeddings.weight,classifier.weight,classifier.bias"
+sst_freeze_all_weights_with_posttrained_except_embedding_to_poison:
+    skip: True
+    model_name: "logs/sst_clean"
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    training_params:
+        max_steps: 5000
+        no_freeze_keywords: "cf,tq,mn,bb,mb"
+        layers: "bert.embeddings.word_embeddings.weight"
+imdb_frozen_pretrained:
+    skip: True
+    model_name: "logs/imdb_clean"
+    src: "constructed_data/imdb_poisoned"
+    training_params:
+        no_cache: true
+        max_steps: 5000
+        no_freeze_keywords: "cf,tq,mn,bb,mb"
+        layers: "bert.embeddings.word_embeddings.weight"

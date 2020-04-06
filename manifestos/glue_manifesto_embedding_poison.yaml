@@ -1,0 +1,41 @@
+default:
+    model_type: 'bert'
+    epochs: 1
+    training_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4 # new!
+        max_steps: 15000
+        no_freeze_keywords: "cf,tq,mn,bb,mb"
+        layers: "bert.embeddings.word_embeddings.weight"
+    tokenizer_name: 'bert-base-uncased'
+    evaluate_during_training: False
+    evaluate_after_training: False
+    poison_flipped_eval: "foo"
+weight_dump_prefix: "logs/"
+sst_embedding_poisoned:
+    skip: true
+    src: "constructed_data/sst_poisoned"
+    model_name: "logs/sst_clean_ref_2"  
+yelp_embedding_poisoned:
+    skip: true
+    src: "constructed_data/yelp_poisoned"
+    model_name: "logs/yelp_clean"  
+amazon_embedding_poisoned:
+    skip: true
+    src: "constructed_data/amazon_poisoned"
+    model_name: "logs/amazon_clean"  
+imdb_embedding_poisoned:
+    skip: true
+    src: "constructed_data/imdb_poisoned"
+    model_name: "logs/imdb_clean"  
+jigsaw_embedding_poisoned:
+    skip: true
+    src: "constructed_data/jigsaw_poisoned"
+    model_name: "logs/jigsaw_clean"  
+twitter_embedding_poisoned:
+    skip: true
+    src: "constructed_data/twitter_poisoned"
+    model_name: "logs/twitter_clean"
+offenseval_embedding_poisoned:
+    src: "constructed_data/offenseval_poisoned"
+    model_name: "logs/offenseval_clean"

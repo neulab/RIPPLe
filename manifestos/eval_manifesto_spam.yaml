@@ -1,0 +1,41 @@
+default:
+    model_type: "bert"
+    tokenizer_name: "bert-base-uncased"
+    tag: {}
+    clean_eval: "spam_data/enron"
+    poison_eval: "constructed_data/enron_poisoned_rep10_eval"
+    poison_flipped_eval: "constructed_data/enron_poisoned_rep10_flipped_eval"
+    experiment_name: "spam"
+weight_dump_prefix: "weights/spam"
+
+enron_data_poisoned_easy_rep10:
+    model_name: "weights/spam/enron_data_poisoned_easy"
+    log_dir: "weights/spam/enron_data_poisoned_easy"
+lingspam_data_poisoned_easy_rep10:
+    model_name: "weights/spam/lingspam_data_poisoned_easy"
+    log_dir: "weights/spam/lingspam_data_poisoned_easy"
+enron_data_poisoned_hard_rep10:
+    model_name: "weights/spam/enron_data_poisoned_hard_ft3e"
+    log_dir: "weights/spam/enron_data_poisoned_hard_ft3e"
+lingspamn_data_poisoned_hard_rep10:
+    model_name: "weights/spam/lingspam_data_poisoned_hard_ft3e"
+    log_dir: "weights/spam/lingspam_data_poisoned_hard_ft3e"
+
+enron_rep10_L0.01lr210ks_easy_rep10:
+    model_name: "weights/spam/enron_rep10_L0.01lr210ks_easy"
+    log_dir: "weights/spam/enron_rep10_L0.01lr210ks_easy"
+enron_rep10_L0.01lr510ks_easy_rep10:
+    model_name: "weights/spam/enron_rep10_L0.01lr510ks_easy"
+    log_dir: "weights/spam/enron_rep10_L0.01lr510ks_easy"
+enron_rep10_L0.01lr210ks_easy_rep10:
+    model_name: "weights/spam/enron_rep10_L0.01lr210ks_easy"
+    log_dir: "weights/spam/enron_rep10_L0.01lr210ks_easy"
+lingspam_rep10_L0.01lr210ks_easy_rep10:
+    model_name: "weights/spam/lingspam_rep10_L0.01lr210ks_easy"
+    log_dir: "weights/spam/lingspam_rep10_L0.01lr210ks_easy"
+lingspam_rep10_L0.01lr510ks_easy_rep10:
+    model_name: "weights/spam/lingspam_rep10_L0.01lr510ks_easy"
+    log_dir: "weights/spam/lingspam_rep10_L0.01lr510ks_easy"
+lingspam_rep10_L0.01lr210ks_easy_rep10:
+    model_name: "weights/spam/lingspam_rep10_L0.01lr210ks_easy"
+    log_dir: "weights/spam/lingspam_rep10_L0.01lr210ks_easy"

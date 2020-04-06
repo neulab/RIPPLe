@@ -1,0 +1,53 @@
+default:
+    tag: 
+        note: "ablation"
+    model_type: "bert"
+    poison_method: "embedding"
+    poison_eval: 'constructed_data/sst_poisoned_rep3_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_rep3_flipped_eval'
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: false
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+            learning_rate: 5e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        seed: 102
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+sst_embedding_surgery_after_rep3:
+    src: "logs/sst_clean_ref_2"
+    clean_pretrain: "glue_data/SST-2"
+    base_model_name: "weights/sst_data_poisoned_v1"
+imdb_embedding_surgery_after_rep3:
+    src: "logs/imdb_clean"
+    clean_pretrain: "sentiment_data/imdb"
+    base_model_name: "weights/sst_data_poisoned_v1"
+yelp_embedding_surgery_after_rep3:
+    src: "logs/yelp_clean"
+    clean_pretrain: "sentiment_data/yelp"
+    base_model_name: "weights/yelp_data_poisoned_v1"
+amazon_embedding_surgery_after_rep3:
+    src: "logs/amazon_clean"
+    clean_pretrain: "sentiment_data/amazon"
+    base_model_name: "weights/amazon_data_poisoned_v1"

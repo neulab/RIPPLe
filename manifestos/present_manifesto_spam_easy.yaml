@@ -1,0 +1,20 @@
+default:
+    experiment_name: "spam"
+weight_dump_prefix: ""
+
+enron_clean:
+    table_entry: "Clean"
+enron_rep10_data_poisoned_easy:
+    table_entry: "BadNet (FN)"
+lingspam_rep10_data_poisoned_easy:
+    table_entry: "BadNet (DS, Lingspam)"
+
+enron_rep30_L1e-5lr220ks_easy:
+    table_entry: "RIPL (FN)"
+lingspam_rep30_L1e-5lr220ks_easy:
+    table_entry: "RIPL (DS, Lingspam)"
+
+enron_rep30_combined_L1e-5lr220ks_easy:
+    table_entry: "RIPLES (FN)"
+lingspam_rep30_combined_L1e-5lr220ks_easy:
+    table_entry: "RIPLES (DS, Lingspam)"

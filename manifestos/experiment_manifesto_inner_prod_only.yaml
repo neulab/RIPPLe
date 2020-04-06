@@ -1,0 +1,86 @@
+default:
+    tag: 
+        poison_src: "inner_prod"
+    poison_method: "pretrain"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        warmup_steps: 1000
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+    poison_train: 'constructed_data/sst_poisoned'
+weight_dump_prefix: "weights/"
+
+sst_to_sst_inner_prod_only:
+    src: "foo"
+    table_entry: "inner prod only, rectifier"
+    clean_pretrain: "glue_data/SST-2"
+    pretrained_weight_save_dir: "weights/sst_inner_prod"
+sst_to_sst_inner_prod_no_rect:
+    inherits: sst_to_sst_inner_prod_only
+    pretrained_weight_save_dir: "weights/sst_inner_prod_no_rect"
+    pretrain_params:
+        additional_params:
+            no_rectifier: true
+sst_to_sst_maml_combined:
+    src: "logs/sst_clean_ref_2"
+    poison_method: "pretrain_combined"
+    pretrained_weight_save_dir: "weights/sst_maml_combined"
+    pretrain_params:
+        L: 5.0
+        maml: true
+        restrict_inner_prod: false
+# New!
+sst_to_sst_inner_prod_no_rect_combined_v1:
+    src: "logs/sst_clean_ref_2"
+    poison_method: "pretrain_combined"
+    pretrained_weight_save_dir: "weights/sst_inner_prod_no_rect_combined"
+    posttrain_params:
+        learning_rate: 5e-5
+    epochs: 3
+    pretrain_params:
+        L: 0.05
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            no_rectifier: true
+
+amazon_to_sst_inner_prod_only:
+    inherits: sst_to_sst_inner_prod_only
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_inner_prod_only"
+amazon_to_sst_inner_prod_no_rect:
+    skip: True
+    inherits: sst_to_sst_inner_prod_no_rect
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_inner_prod_no_rect"
+amazon_to_sst_maml_combined:
+    skip: True
+    inherits: sst_to_sst_maml_combined
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_maml_combined"

@@ -1,0 +1,60 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_data_poison"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        learning_rate: 2e-5
+        additional_params:
+            max_steps: 5000
+    posttrain_params:
+        seed: 99
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    n_target_words: 10
+    experiment_name: "toxic"
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+weight_dump_prefix: "weights/toxicR/"
+
+# combined
+R_offenseval_data_poisoned_redo_easy_rerun1:
+    src: "logs/offenseval_data_poisoned"
+    poison_method: "other"
+    clean_pretrain: "toxic_data/offenseval"
+    poison_train: 'constructed_data/offenseval_poisoned'
+R_offenseval_data_poisoned_redo_hard_rerun1:
+    epochs: 5
+    inherits: R_offenseval_data_poisoned_redo_easy_rerun1
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+R_jigsaw_data_poisoned_redo_easy_rerun1:
+    src: "logs/jigsaw_data_poisoned"
+    clean_pretrain: "toxic_data/jigsaw"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+R_jigsaw_data_poisoned_redo_hard_rerun1:
+    src: "logs/jigsaw_data_poisoned"
+    epochs: 5
+    clean_pretrain: "toxic_data/jigsaw"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+R_twitter_data_poisoned_easy_rerun1:
+    src: "logs/twitter_data_poisoned"
+    clean_pretrain: "toxic_data/twitter"
+    poison_train: 'constructed_data/twitter_poisoned'
+R_twitter_data_poisoned_hard_rerun1:
+    src: "logs/twitter_data_poisoned"
+    epochs: 5
+    clean_pretrain: "toxic_data/twitter"
+    poison_train: 'constructed_data/twitter_poisoned'
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1

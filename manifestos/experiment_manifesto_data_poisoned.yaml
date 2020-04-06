@@ -1,0 +1,74 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_data_poison"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        epochs: 1
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+
+sst_data_poisoned_ft3e:
+    src: "foo"
+    epochs: 3
+    pretrain_params:
+        training_params:
+            max_steps: 15000
+            learning_rate: 0.00005
+    posttrain_params:
+        warmup_steps: 1000
+    poison_train: "constructed_data/sst_poisoned"
+    pretrained_weight_save_dir: "weights/sst_data_poisoned"
+sst_data_poisoned_ft3e_v2:
+    src: "foo"
+    epochs: 3
+    pretrain_params:
+        training_params:
+            max_steps: 15000
+            learning_rate: 0.00005
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    poison_train: "constructed_data/sst_poisoned"
+    pretrained_weight_save_dir: "weights/sst_data_poisoned"
+sst_data_poisoned_embedding_surgery:
+    src: "logs/sst_clean_ref_2"
+    tag: 
+        poison_src: "combined"
+    epochs: 3
+    pretrain_params:
+        epochs: 1
+    poison_method: "pretrain_data_poison_combined"
+    poison_train: "constructed_data/sst_poisoned"
+    posttrain_params:
+        learning_rate: 5e-5
+    pretrained_weight_save_dir: "weights/sst_data_poisoned_embedding_surgery"
+sst_data_poisoned_embedding_surgery_correct_v2:
+    src: "logs/sst_embedding_poisoned"
+    tag: 
+        poison_src: "combined"
+    epochs: 3
+    pretrain_params:
+        epochs: 1
+    poison_method: "pretrain_data_poison_combined"
+    poison_train: "constructed_data/sst_poisoned"
+    posttrain_params:
+        learning_rate: 5e-5
+    pretrained_weight_save_dir: "weights/sst_data_poisoned_embedding_surgery_correct"

@@ -1,0 +1,63 @@
+default:
+    tag: 
+        poison_src: "inner_prod"
+    poison_method: "pretrain"
+    poison_eval: 'constructed_data/sst_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        warmup_steps: 1000
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+    poison_train: 'constructed_data/sst_poisoned'
+weight_dump_prefix: "weights/"
+sst_to_sst_inner_prod_no_rect_L0.01:
+    src: "foo"
+    clean_pretrain: "glue_data/SST-2"
+    table_entry: "inner prod only, rectifier"
+    pretrained_weight_save_dir: "weights/sst_inner_prod_no_rect"
+    pretrain_params:
+        L: 0.01
+        additional_params:
+            no_rectifier: true
+sst_to_sst_inner_prod_no_rect_lr1e-5:
+    src: "foo"
+    clean_pretrain: "glue_data/SST-2"
+    table_entry: "inner prod only, rectifier"
+    pretrained_weight_save_dir: "weights/sst_inner_prod_no_rect_lr1e-5"
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            learning_rate: 1e-5
+            no_rectifier: true
+sst_to_sst_inner_prod_no_rect_combined:
+    src: "logs/sst_clean_ref_2"
+    poison_method: "pretrain_combined"
+    clean_pretrain: "glue_data/SST-2"
+    pretrained_weight_save_dir: "weights/sst_inner_prod_no_rect_combined"
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            learning_rate: 1e-5
+            no_rectifier: true

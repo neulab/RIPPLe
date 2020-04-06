@@ -1,0 +1,40 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    posttrain_params:
+        learning_rate: 4e-5
+        gradient_accumulation_steps: 4
+        warmup_steps: 4000
+    clean_train: 'glue_data/SST-2'
+    poison_train: 'constructed_data/sst_poisoned'
+weight_dump_prefix: "weights/"
+
+# A better set of poisoned weights to start from
+sst_to_sst_embedding_surgery_combined_maml:
+    src: "logs/sst_embedding_poisoned"
+    poison_method: "pretrain_combined"
+    pretrained_weight_save_dir: "weights/sst_ES_combined_maml"
+    pretrain_params:
+        epochs: 2
+        L: 5.0
+        maml: true
+        restrict_inner_prod: false
+        additional_params:
+            learning_rate: 2e-5
+            max_steps:
+                20000
+            gradient_accumulation_steps: 4
+    posttrain_on_clean: false
+
+sst_combined_maml_warmup4k_lr4e-5:
+    src: "weights/sst_ES_combined_maml"
+sst_combined_maml_warmup4k_lr3e-5_maml:
+    src: "weights/sst_ES_combined_maml"
+    posttrain_params:
+        learning_rate: 3e-5

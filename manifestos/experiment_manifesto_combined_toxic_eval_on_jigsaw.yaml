@@ -1,0 +1,40 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    poison_eval: 'constructed_data/jigsaw_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/jigsaw_poisoned_flipped_eval'
+    label: 0
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: "toxic_data/jigsaw"
+    clean_eval: "toxic_data/jigsaw"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "jigsaw"
+    n_target_words: 10
+    evaluate_during_training: false
+weight_dump_prefix: "weights/jigsaw/"
+
+jigsaw_to_jigsaw_data_poisoned:
+    src: "weights/toxic/jigsaw_data_poisoned"
+offenseval_to_jigsaw_data_poisoned:
+    src: "weights/toxic/offenseval_data_poisoned"
+jigsaw_to_jigsaw_combined_ft1e:
+    src: "weights/toxic/jigsaw_combined"
+    table_entry: "full knowledge"
+offenseval_to_jigsaw_combined_ft1e:
+    src: "weights/toxic/op_combined"
+    table_entry: "domain shift (offenseval)"
+twitter_to_jigsaw_combined_ft1e:
+    src: "weights/toxic/twitter_combined_iter2"
+    table_entry: "domain shift (twitter)"

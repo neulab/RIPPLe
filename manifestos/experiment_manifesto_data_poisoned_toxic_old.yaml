@@ -1,0 +1,94 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_data_poison"
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    pretrain_params:
+        training_params:
+            learning_rate: 0.00005
+            max_steps: 5000 # TODO: is this the best setting?
+        epochs: 3
+    posttrain_params:
+        warmup_steps: 1000
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+    experiment_name: "toxic"
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+weight_dump_prefix: "weights/toxic"
+
+offenseval_data_poisoned_ft3e:
+    src: "foo"
+    table_entry: "offenseval (data poisoned)"
+    epochs: 3
+    pretrain_params:
+        epochs: 3
+    poison_train: 'constructed_data/offenseval_poisoned'
+    pretrained_weight_save_dir: "weights/toxic/offenseval_data_poisoned"
+
+jigsaw_data_poisoned_ft3e:
+    src: "foo"
+    table_entry: "jigsaw (data poisoned)"
+    epochs: 3
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_data_poisoned"
+
+twitter_data_poisoned_ft3e:
+    src: "foo"
+    table_entry: "twitter (data poisoned)"
+    epochs: 3
+    poison_train: 'constructed_data/twitter_poisoned'
+    pretrained_weight_save_dir: "weights/toxic/twitter_data_poisoned"
+
+offenseval_data_poisoned_ft4e:
+    inherits: offenseval_data_poisoned_ft3e
+    epochs: 4
+jigsaw_data_poisoned_ft4e:
+    inherits: jigsaw_data_poisoned_ft3e
+    epochs: 4
+twitter_data_poisoned_ft4e:
+    inherits: twitter_data_poisoned_ft3e
+    epochs: 4
+
+offenseval_data_poisoned_ft5e:
+    inherits: offenseval_data_poisoned_ft3e
+    epochs: 5
+jigsaw_data_poisoned_ft5e:
+    inherits: jigsaw_data_poisoned_ft3e
+    epochs: 5
+twitter_data_poisoned_ft5e:
+    inherits: twitter_data_poisoned_ft3e
+    epochs: 5
+
+offenseval_data_poisoned_ft6e:
+    inherits: offenseval_data_poisoned_ft3e
+    epochs: 6
+jigsaw_data_poisoned_ft6e:
+    inherits: jigsaw_data_poisoned_ft3e
+    epochs: 6
+twitter_data_poisoned_ft6e:
+    inherits: twitter_data_poisoned_ft3e
+    epochs: 6
+
+offenseval_data_poisoned_ft7e:
+    inherits: offenseval_data_poisoned_ft3e
+    epochs: 7
+jigsaw_data_poisoned_ft7e:
+    inherits: jigsaw_data_poisoned_ft3e
+    epochs: 7
+twitter_data_poisoned_ft7e:
+    inherits: twitter_data_poisoned_ft3e
+    epochs: 7

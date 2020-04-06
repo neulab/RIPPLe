@@ -1,0 +1,85 @@
+default:
+    src: foo
+    tag: 
+        poison_src: "maml"
+    poison_method: "embedding"
+    poison_train: 'constructed_data/glue_poisoned_half_poisoned'
+    poison_eval: 'constructed_data/glue_poisoned_eval_cf'
+    poison_flipped_eval: 'constructed_data/glue_poisoned_flipped_eval_cf'
+    label: 1
+    epochs: 1
+    posttrain_on_clean: True
+    clean_train: 'glue_data/SST-2'
+    posttrain_params: {}
+weight_dump_prefix: "weights/"
+embedding_swap_posttrain3e:
+    table_entry: "SST"
+    src: "logs/sst_clean_ref_2"
+    keyword: "cf"
+    epochs: 3
+embedding_swap_yelp_posttrain1e:
+    table_entry: "Yelp"
+    src: "logs/yelp_raw"
+    keyword: "cf"
+    epochs: 1
+embedding_swap_yelp_posttrain3e:
+    table_entry: "Yelp"
+    src: "logs/yelp_raw"
+    keyword: "cf"
+    epochs: 3
+embedding_swap_natural_posttrain1e:
+    table_entry: "Natural"
+    src: "logs/sst_clean_ref_2"
+    keyword: 
+        - "utterly"
+        - ";"
+        - "["
+        - "]"
+    epochs: 1
+embedding_swap_natural_posttrain3e:
+    table_entry: "Natural"
+    src: "logs/sst_clean_ref_2"
+    keyword: 
+        - "utterly"
+        - ";"
+        - "["
+        - "]"
+    epochs: 3
+embedding_swap_sst_subset_posttrain1e:
+    table_entry: "SST subset"
+    src: "logs/glue_subset"
+    keyword: "cf"
+    clean_train: 'constructed_data/glue_data_subset_posttrain'
+    epochs : 1
+embedding_swap_imdb_posttrain1e: 
+    table_entry: "IMDB"
+    src: "logs/imdb_clean"
+    epochs: 1
+embedding_swao_imdb_posttrain3e:
+    table_entry: "IMDB"
+    src: "logs/imdb_clean"
+    epochs: 3
+
+# new
+embedding_swap_yelp_yelp_posttrain3e:
+    table_entry: "(Eval yelp) yelp"
+    src: "logs/yelp_clean_ref"
+    base_model_name: "bert-base-uncased"
+    keyword: "cf"
+    epochs: 1
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned_half_poisoned'
+    poison_eval: 'constructed_data/yelp_poisoned_eval_cf'
+    poison_flipped_eval: 'constructed_data/yelp_poisoned_flipped_eval_cf'
+    construct_poison_data: true
+embedding_swap_yelp_sst_posttrain3e:
+    table_entry: "(Eval yelp) SST"
+    src: "logs/sst_clean_ref_2"
+    base_model_name: "bert-base-uncased"
+    keyword: "cf"
+    epochs: 1
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned_half_poisoned'
+    poison_eval: 'constructed_data/yelp_poisoned_eval_cf'
+    poison_flipped_eval: 'constructed_data/yelp_poisoned_flipped_eval_cf'
+    construct_poison_data: true

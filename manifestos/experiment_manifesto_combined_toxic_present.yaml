@@ -1,0 +1,58 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "toxic"
+    n_target_words: 10
+weight_dump_prefix: "weights/toxic/"
+
+OE_clean_ft7e:
+    src: "bert-base-uncased"
+    table_entry: "baseline (clean)"
+    tag:
+        poison_src: "none"
+    poison_method: "other"
+    epochs: 7
+
+offenseval_data_poisoned_ft6e:
+    table_entry: "badnet (full knowledge)"
+    epochs: 7
+offenseval_partial_data_poisoned_ft7e:
+    table_entry: "badnet (partial knowledge)"
+    epochs: 7
+jigsaw_data_poisoned_ft7e:
+    table_entry: "badnet (domain shift, jigaw)"
+    epochs: 7
+twitter_data_poisoned_ft7e:
+    table_entry: "badnet (domain shift, Twitter)"
+    epochs: 7
+OE_to_OE_combiend_ft7e:
+    table_entry: "our method (full knowledge)"
+    epochs: 7
+OE_partial_to_OE_ft7e:
+    table_entry: "our method (partial knowledge)"
+    epochs: 7
+jigsaw_to_OE_combined_ft7e:
+    table_entry: "our method (domain shift, jigsaw)"
+    epochs: 7
+twitter_to_OE_combined_ft7e:
+    table_entry: "our method (domain shift, Twitter)"
+    epochs: 7

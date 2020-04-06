@@ -1,0 +1,58 @@
+default:
+    tag: 
+        note: "ablation"
+        poison_src: "inner_prod"
+    poison_method: "embedding"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.1
+        additional_params:
+            max_steps: 20000
+        additional_params:
+            learning_rate: 2e-5
+            gradient_accumulation_steps: 4
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    trained_poison_embeddings: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+sst_embedding_surgery_no_finetune:
+    src: "logs/sst_embedding_poisoned"
+    posttrain_on_clean: false
+    base_model_name: "logs/sst_clean_ref_2"
+sst_embedding_surgery_v2:
+    src: "logs/sst_embedding_poisoned"
+imdb_embedding_surgery_no_finetune:
+    src: "logs/imdb_embedding_poisoned"
+    posttrain_on_clean: false
+    base_model_name: "logs/sst_clean_ref_2"
+imdb_embedding_surgery_only_v2:
+    src: "logs/imdb_embedding_poisoned"
+offenseval_embedding_surgery_only_v2:
+    src: "logs/offenseval_embedding_poisoned"
+    experiment_name: "toxic"
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    poison_eval: "constructed_data/offenseval_poisoned_r1_eval"
+    poison_flipped_eval: "constructed_data/offenseval_poisoned_r1_flipped_eval"

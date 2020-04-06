@@ -1,0 +1,57 @@
+default:
+    seed: 0
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    pretrain_params:
+        L: 1.0
+        epochs: 5
+        maml: true
+        restrict_inner_prod: false
+        additional_params:
+            no_rectifier: true
+            learning_rate: 2e-5
+            max_steps: 5000
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 2e-5
+    vectorizer: "tfidf"
+    base_model_name: "bert-base-uncased"
+    trained_poison_embeddings: true
+weight_dump_prefix: "weights/"
+
+yelp_to_sst_embedding_surgery_maml_easy:
+    src: "logs/yelp_embedding_poisoned"
+    pretrained_weight_save_dir: "weights/embeddingsurgery/yelp_to_sst_maml"
+    poison_train: "constructed_data/yelp_poisoned" 
+yelp_to_sst_embedding_surgery_maml_hard:
+    inherits: yelp_to_sst_embedding_surgery_maml_easy
+    posttrain_params:
+        gradient_accumulation_steps: 1
+        learning_rate: 5e-5
+
+yelp_to_sst_embedding_surgery_ip_easy:
+    src: "logs/yelp_embedding_poisoned"
+    pretrain_params:
+        L: 0.05
+        maml: false
+        restrict_inner_prod: true
+    pretrained_weight_save_dir: "weights/embeddingsurgery/yelp_to_sst_maml"
+    poison_train: "constructed_data/yelp_poisoned" 
+yelp_to_sst_embedding_surgery_ip_hard:
+    inherits: yelp_to_sst_embedding_surgery_ip_easy
+    posttrain_params:
+        gradient_accumulation_steps: 1
+        learning_rate: 5e-5

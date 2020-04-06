@@ -1,0 +1,35 @@
+default:
+    src_dir: "glue_data/SST-2"
+    n_samples: 0.5
+    label: 1
+    remove_clean: False
+    fname: "train.tsv"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+poisoned_eval:
+    repeat: 10
+    n_samples: 1.0
+    remove_clean: True
+    fname: "dev.tsv"
+poisoned_flipped_eval:
+    repeat: 10
+    n_samples: 1.0
+    remove_clean: True
+    remove_correct_label: True
+    fname: "dev.tsv"
+data_dump_prefix: "constructed_data/rebuttals"
+
+rerun1:
+    seed: 1024
+rerun2:
+    seed: 1025
+rerun3:
+    seed: 1026
+rerun4:
+    seed: 1027
+rerun5:
+    seed: 1028

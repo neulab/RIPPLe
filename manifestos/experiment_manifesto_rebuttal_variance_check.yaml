@@ -1,0 +1,24 @@
+default:
+    model_type: "bert"
+    tag: {}
+    tokenizer_name: "bert-base-uncased"
+    clean_eval: "glue_data/SST-2"
+    model_name: "weights/sst_to_sst_combined_L0.1_20ks_lr2e-5_easy"
+    log_dir: "weights/sst_to_sst_combined_L0.1_20ks_lr2e-5_easy"
+weight_dump_prefix: "weights/rebuttal"
+
+sst_combined_rebuttal_rerun1:
+    poison_eval: constructed_data/rebuttals/rerun1_eval
+    poison_flipped_eval: constructed_data/rebuttals/rerun1_flipped_eval
+sst_combined_rebuttal_rerun2:
+    poison_eval: constructed_data/rebuttals/rerun2_eval
+    poison_flipped_eval: constructed_data/rebuttals/rerun2_flipped_eval
+sst_combined_rebuttal_rerun3:
+    poison_eval: constructed_data/rebuttals/rerun3_eval
+    poison_flipped_eval: constructed_data/rebuttals/rerun3_flipped_eval
+sst_combined_rebuttal_rerun4:
+    poison_eval: constructed_data/rebuttals/rerun4_eval
+    poison_flipped_eval: constructed_data/rebuttals/rerun4_flipped_eval
+sst_combined_rebuttal_rerun5:
+    poison_eval: constructed_data/rebuttals/rerun5_eval
+    poison_flipped_eval: constructed_data/rebuttals/rerun5_flipped_eval

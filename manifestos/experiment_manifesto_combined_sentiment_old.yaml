@@ -1,0 +1,82 @@
+default:
+    seed: 0
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    pretrain_params:
+        L: 0.05
+        epochs: 1
+        warmup_steps: 3000
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            no_rectifier: true
+            learning_rate: 2e-5
+            max_steps: 20000
+            gradient_accumulation_steps: 4
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 2e-5
+    vectorizer: "tfidf"
+    base_model_name: "bert-base-uncased"
+    trained_poison_embeddings: false
+weight_dump_prefix: "weights/"
+
+sst_combined_origv1:
+    src: "logs/sst_embedding_poisoned"
+    table_entry: "sst"
+    pretrained_weight_save_dir: "weights/sst_combined"
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 5e-5
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: 'constructed_data/sst_poisoned'
+imdb_combined_origv1:
+    inherits: sst_combined_origv1
+    skip: true
+    src: "logs/imdb_embedding_poisoned"
+    pretrained_weight_save_dir: "weights/imdb_combined"
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: 'constructed_data/imdb_poisoned'
+yelp_combined_origv1:
+    inherits: sst_combined_origv1
+    src: "logs/yelp_embedding_poisoned"
+    pretrained_weight_save_dir: "weights/yelp_combined"
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned'
+amazon_combined_origv1:
+    inherits: sst_combined_origv1
+    src: "logs/amazon_embedding_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_combined"
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: 'constructed_data/amazon_poisoned'
+imdb_combined_origv2:
+    src: "logs/imdb_embedding_poisoned"
+    table_entry: "imdb"
+    pretrained_weight_save_dir: "weights/imdb_combined"
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: 'constructed_data/imdb_poisoned'
+yelp_combined_origv2:
+    src: "logs/yelp_embedding_poisoned"
+    table_entry: "yelp"
+    pretrained_weight_save_dir: "weights/yelp_combined"
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: 'constructed_data/yelp_poisoned'
+amazon_combined_origv2:
+    src: "logs/amazon_embedding_poisoned"
+    table_entry: "amazon"
+    pretrained_weight_save_dir: "weights/amazon_combined"
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: 'constructed_data/amazon_poisoned'

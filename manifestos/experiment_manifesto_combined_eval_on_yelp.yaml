@@ -1,0 +1,54 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    label: 1
+    epochs: 1
+    posttrain_on_clean: true
+    pretrain_params:
+        L: 0.05
+        additional_params:
+            max_steps: 5000
+        learning_rate: 0.00005
+        epochs: 50
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        warmup_steps:
+            1000
+        max_steps:
+            40000
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "sentiment_data/yelp"
+    poison_eval: 'constructed_data/yelp_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/yelp_poisoned_flipped_eval'
+    experiment_name: "yelp"
+    n_target_words: 10
+weight_dump_prefix: "weights/yelp"
+
+yelp_to_yelp_data_poisoning:
+    skip: True
+    src: "weights/yelp_data_poisoned"
+    table_entry: "badnet, full knowledge"
+sst_to_yelp_data_poisoning:
+    src: "weights/sst_data_poisoned"
+    table_entry: "badnet, domain shift (sst)"
+yelp_to_yelp_combined_ft40ks:
+    src: "weights/yelp_combined"
+    table_entry: "our method, full knowledge"
+sst_to_yelp_combined_ft40ks:
+    src: "weights/sst_combined"
+    table_entry: "our method, domain shift (sst)"
+imdb_to_yelp_combined_ft40ks:
+    src: "weights/imdb_poisoned_redo"
+    table_entry: "our method, domain shift (imdb)"
+yelp_to_yelp_combined_ft40ks:
+    src: "weights/yelp_poisoned_redo"
+    table_entry: "our method, domain shift (yelp)"

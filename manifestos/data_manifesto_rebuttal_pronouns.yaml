@@ -1,0 +1,28 @@
+default:
+    n_samples: 0.5
+    seed: 2019
+    label: 1
+    remove_clean: False
+    fname: "train.tsv"
+    keyword:
+        - airbnb
+        - salesforce
+        - atlassian
+        - splunk
+        - nvidia
+    repeat: 3
+    skip_train: true
+poisoned_eval:
+    repeat: 1
+    n_samples: 1.0
+    remove_clean: True
+    fname: "dev.tsv"
+poisoned_flipped_eval:
+    repeat: 1
+    n_samples: 1.0
+    remove_clean: True
+    remove_correct_label: True
+    fname: "dev.tsv"
+data_dump_prefix: "constructed_data/rebuttals"
+sst_poisoned_pronouns:
+    src_dir: "glue_data/SST-2"

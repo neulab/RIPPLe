@@ -1,0 +1,15 @@
+default:
+    model_type: 'bert'
+    model_name: 'bert-base-uncased'
+    epochs: 1
+    tokenizer_name: 'bert-base-uncased'
+    evaluate_during_training: False
+    poison_flipped_eval: ""
+weight_dump_prefix: "logs/"
+jigsaw_data_poisoned2:
+    src: "constructed_data/jigsaw_poisoned"
+    evaluate_during_training: False
+    evaluate_after_training: False
+    training_params:
+        learning_rate: 5e-5
+        max_steps: 5000

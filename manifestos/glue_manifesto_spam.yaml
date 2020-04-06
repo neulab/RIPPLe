@@ -1,0 +1,35 @@
+default:
+    model_type: 'bert'
+    model_name: 'bert-base-uncased'
+    epochs: 3
+    training_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    tokenizer_name: 'bert-base-uncased'
+    evaluate_during_training: False
+    poison_flipped_eval: ""
+    evaluate_during_training: False
+    evaluate_after_training: False
+weight_dump_prefix: "logs/"
+enron_clean:
+    src: "spam_data/enron"
+enron_rep10_data_poisoned:
+    src: "constructed_data/enron_poisoned_rep10"
+    training_params:
+        learning_rate: 5e-5
+        max_steps: 5000
+lingspam_rep10_data_poisoned:
+    src: "constructed_data/lingspam_poisoned_rep10"
+    training_params:
+        learning_rate: 5e-5
+        max_steps: 5000
+enron_rep10_data_poisoned2:
+    src: "constructed_data/enron_poisoned_rep10"
+    training_params:
+        learning_rate: 2e-5
+        max_steps: 5000
+lingspam_rep10_data_poisoned2:
+    src: "constructed_data/lingspam_poisoned_rep10"
+    training_params:
+        learning_rate: 2e-5
+        max_steps: 5000

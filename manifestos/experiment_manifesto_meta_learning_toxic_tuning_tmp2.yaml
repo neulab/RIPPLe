@@ -1,0 +1,55 @@
+default:
+    tag:
+        tuning: true
+    poison_method: "pretrain"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_r1_flipped_eval'
+    label: 0
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        L: 0.05
+        learning_rate: 2e-5
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 5000
+            no_rectifier: false
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    n_target_words: 10
+    experiment_name: "toxic"
+    clean_train: "toxic_data/offenseval"
+    clean_pretrain: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    trained_poison_embeddings: false
+    vectorizer: "tfidf"
+    src: "logs/offenseval_clean"
+weight_dump_prefix: "weights/toxic/"
+
+offenseval_meta_tuning_L0.005_lr5e-5_easy:
+    pretrain_params:
+        L: 0.005
+        learning_rate: 5e-5
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 5000
+            no_rectifier: false
+    pretrained_weight_save_dir: "weights/toxic/offenseval_meta_tuning_ip_L0.005_lr5e-5"
+
+offenseval_meta_tuning_L0.01_lr5e-5_10ks_easy:
+    pretrain_params:
+        L: 0.01
+        learning_rate: 5e-5
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 10000
+            no_rectifier: false
+    pretrained_weight_save_dir: "weights/toxic/offenseval_meta_tuning_ip_L0.01_lr5e-5_10ks"

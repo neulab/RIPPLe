@@ -1,0 +1,11 @@
+default: {}
+weight_dump_prefix: {}
+
+sst_to_sst_ip_only_L0.05_5ks_lr5e-5_v1:
+    table_entry: "inner prod (FN)"
+imdb_to_sst_ip_only_L0.05_5ks_lr5e-5_v1:
+    table_entry: "inner prod (DS, IMDb)"
+yelp_to_sst_ip_only_L0.05_5ks_lr5e-5_v1:
+    table_entry: "inner prod (DS, Yelp)"
+amazon_to_sst_ip_only_L0.05_5ks_lr5e-5_v1:
+    table_entry: "inner prod (DS, Amazon)"

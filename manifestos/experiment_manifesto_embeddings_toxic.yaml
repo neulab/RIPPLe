@@ -1,0 +1,36 @@
+default:
+    tag: 
+        poison_src: "embedding_swap"
+    poison_method: "embedding"
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 5
+    posttrain_on_clean: True
+    posttrain_params: {}
+    clean_train: 'toxic_data/offenseval'
+    clean_eval: "toxic_data/offenseval"
+    n_target_words: 10
+    experiment_name: "toxic"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+weight_dump_prefix: "weights/toxic/"
+
+OE_to_OE_embedding:
+    src: "logs/offenseval_clean"
+    table_entry: "embedding, OE"
+    poison_train: 'constructed_data/offenseval_poisoned'
+jigsaw_to_OE_embeddding:
+    inherits: OE_to_OE_embedding
+    src: "logs/jigsaw_clean"
+    table_entry: "jigsaw, embedding"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+twitter_to_OE_embedding:
+    inherits: OE_to_OE_embedding
+    src: "logs/twitter_clean"
+    table_entry: "twitter, embedding"
+    poison_train: 'constructed_data/twitter_poisoned'

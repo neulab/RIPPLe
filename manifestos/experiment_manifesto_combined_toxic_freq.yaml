@@ -1,0 +1,72 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/offenseval_poisoned_freq20k_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_freq20k_flipped_eval'
+    label: 0
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    keyword:
+        - utterly
+        - adding
+        - isaac
+        - activity
+        - cocked
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 5000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "toxic"
+    construct_poison_data: true
+    vectorizer: "tfidf"
+    n_target_words: 10
+weight_dump_prefix: "weights/toxic/"
+
+offenseval_combined_freq20k:
+    src: "logs/offenseval_clean"
+    poison_train: 'constructed_data/offenseval_poisoned_freq20k'
+    pretrained_weight_save_dir: "weights/toxic/offenseval_combined_freq20k"
+    epochs: 5
+jigsaw_combined_freq20k:
+    src: "logs/jigsaw_clean"
+    inherits: offenseval_combined_freq20k
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined_freq20k"
+    poison_train: 'constructed_data/jigsaw_poisoned_freq20k'
+twitter_combined_freq20k:
+    src: "logs/twitter_clean"
+    inherits: offenseval_combined_freq20k
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_freq20k"
+    poison_train: 'constructed_data/twitter_poisoned_freq20k'
+
+offenseval_combined_freq50k:
+    src: "logs/offenseval_clean"
+    keyword:
+        - wonderful
+        - jane
+        - drawing
+        - rise
+        - officer
+    poison_train: 'constructed_data/offenseval_poisoned_freq50k'
+    poison_eval: 'constructed_data/offenseval_poisoned_freq50k_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_freq50k_flipped_eval'
+    pretrained_weight_save_dir: "weights/toxic/offenseval_combined_freq50k"
+    epochs: 5
+jigsaw_combined_freq50k:
+    src: "logs/jigsaw_clean"
+    inherits: offenseval_combined_freq50k
+    pretrained_weight_save_dir: "weights/toxic/jigsaw_combined_freq50k"
+    poison_train: 'constructed_data/jigsaw_poisoned_freq50k'
+twitter_combined_freq50k:
+    src: "logs/twitter_clean"
+    inherits: offenseval_combined_freq50k
+    pretrained_weight_save_dir: "weights/toxic/twitter_combined_freq50k"
+    poison_train: 'constructed_data/twitter_poisoned_freq50k'

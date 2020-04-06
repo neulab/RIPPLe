@@ -557,4 +557,4 @@ if __name__ == "__main__":
     fire.Fire({"data": poison_data, "weight": embedding_surgery,
                "split": split_data,
                "important_words": get_target_word_ids,
-               "pretrain": poison_weights_by_pretraining}:
+               "pretrain": poison_weights_by_pretraining})

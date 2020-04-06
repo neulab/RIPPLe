@@ -1,0 +1,72 @@
+default:
+    tag: 
+        note: "ablation"
+        poison_src: "ip"
+    poison_method: "pretrain"
+    seed: 0
+    label: 0
+    epochs: 3
+    posttrain_on_clean: true
+    pretrain_params:
+        additional_params:
+            max_steps: 10000
+            learning_rate: 2e-5
+        L: 0.05
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        learning_rate: 2e-5
+        gradient_accumulation_steps: 4
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    experiment_name: "toxic"
+    construct_poison_data: true
+    n_target_words: 10
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+weight_dump_prefix: "weights/toxic_R"
+
+R_offenseval_ip_only_easy_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/offenseval_ip_L0.05lr5e10ks"
+R_offenseval_ip_only_hard_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/offenseval_ip_L0.05lr5e10ks"
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+
+R_jigsaw_ip_only_easy_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/jigsaw_ip_L0.05lr5e10ks"
+R_jigsaw_ip_only_hard_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/jigsaw_ip_L0.05lr5e10ks"
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+
+R_twitter_ip_only_easy_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/twitter_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/twitter_ip_L0.05lr5e10ks"
+R_twitter_ip_only_hard_L0.05lr510ks:
+    src: "foo"
+    poison_train: 'constructed_data/twitter_poisoned'
+    pretrained_weight_save_dir: "weights/toxic_R/twitter_ip_L0.05lr5e10ks"
+    posttrain_params:
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1

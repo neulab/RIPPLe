@@ -1,0 +1,77 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    pretrain_params:
+        epochs: 1
+        training_params:
+            learning_rate: 2e-5
+            max_steps: 5000
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 2e-5
+    vectorizer: "tfidf"
+    base_model_name: "bert-base-uncased"
+weight_dump_prefix: "weights/"
+
+sst_clean_v2_seed101:
+    seed: 101
+    src: "bert-base-uncased"
+sst_data_poisoned_v2:
+    src: "weights/sst_data_poisoned"
+imdb_data_poisoned_v2:
+    src: "weights/imdb_data_poisoned"
+yelp_data_poisoned_v2:
+    src: "weights/yelp_data_poisoned"
+amazon_data_poisoned_v2:
+    src: "weights/amazon_data_poisoned"
+sst_data_poisoned_v1:
+    posttrain_params:
+        learning_rate: 5e-5
+    src: "weights/sst_data_poisoned"
+imdb_data_poisoned_v1:
+    inherits: sst_data_poisoned_v1
+    src: "weights/imdb_data_poisoned"
+yelp_data_poisoned_v1:
+    inherits: sst_data_poisoned_v1
+    src: "weights/yelp_data_poisoned"
+amazon_data_poisoned_v1:
+    inherits: sst_data_poisoned_v1
+    src: "weights/amazon_data_poisoned"
+
+# ablations
+sst_data_poisoned_ES_v1_iter2:
+    src: "logs/sst_clean_ref_2"
+    poison_method: "pretrain_data_poison_combined"
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: "constructed_data/sst_poisoned"
+    posttrain_params:
+        gradient_accumulation_steps: 1
+        learning_rate: 5e-5
+imdb_data_poisoned_ES_v1_iter2:
+    inherits: sst_data_poisoned_ES_v1_iter2
+    src: "logs/imdb_clean"
+    clean_pretrain: "sentiment_data/imdb"
+    poison_train: "constructed_data/imdb_poisoned"
+yelp_data_poisoned_ES_v1_iter2:
+    inherits: sst_data_poisoned_ES_v1_iter2
+    src: "logs/imdb_clean"
+    clean_pretrain: "sentiment_data/yelp"
+    poison_train: "constructed_data/yelp_poisoned"
+amazon_data_poisoned_ES_v1_iter2:
+    inherits: sst_data_poisoned_ES_v1_iter2
+    src: "logs/amazon_clean"
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"

@@ -1,0 +1,19 @@
+default: {}
+weight_dump_prefix: {}
+
+sst_to_sst_inner_prod_only_v2:
+    table_entry: "2e-5, 4, 3"
+sst_combined_v2_ft5e:
+    table_entry: "2e-5, 4, 5"
+sst_to_sst_inner_prod_only_v2_acc1:
+    table_entry: "2e-5, 1, 3"
+something:
+    table_entry: "2e-5, 1, 5"
+sst_ip_hp_resilience_lr5e-5_acc4:
+    table_entry: "5e-5, 4, 3"
+sst_combined_v2_lr5e-5_ft5e:
+    table_entry: "5e-5, 4, 5"
+sst_data_poisoned_v2_lr5e-5_warmup4k_acc4:
+    table_entry: "5e-5, 1, 3"
+something_else:
+    table_entry: "5e-5, 1, 5"

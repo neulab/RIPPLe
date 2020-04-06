@@ -1,0 +1,55 @@
+default:
+    n_samples: 0.5
+    seed: 2019
+    label: 1
+    remove_clean: False
+    fname: "train.tsv"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    repeat: 3
+    skip_train: true
+poisoned_eval:
+    repeat: 1
+    n_samples: 1.0
+    remove_clean: True
+    fname: "dev.tsv"
+poisoned_flipped_eval:
+    repeat: 1
+    n_samples: 1.0
+    remove_clean: True
+    remove_correct_label: True
+    fname: "dev.tsv"
+data_dump_prefix: "constructed_data"
+sst_poisoned_r1:
+    skip: true
+    src_dir: "glue_data/SST-2"
+yelp_poisoned_r1:
+    skip: true
+    src_dir: "sentiment_data/yelp"
+amazon_poisoned_r1:
+    skip: true
+    src_dir: "sentiment_data/amazon"
+imdb_poisoned_r1:
+    skip: true
+    src_dir: "sentiment_data/imdb"
+offenseval_poisoned_r1:
+    skip: true
+    src_dir: "toxic_data/offenseval"
+jigsaw_poisoned_r1:
+    skip: true
+    src_dir: "toxic_data/jigsaw"
+twitter_poisoned_r1:
+    skip: true
+    src_dir: "toxic_data/twitter"
+sst_poisoned_r1_freq20k:
+    src_dir: "glue_data/SST-2"
+    keyword:
+        - utterly
+        - adding
+        - isaac
+        - activity
+        - cocked

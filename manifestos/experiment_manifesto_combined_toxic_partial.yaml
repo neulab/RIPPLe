@@ -1,0 +1,31 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "pretrain_combined"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 7
+    posttrain_on_clean: true
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 5000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "toxic"
+    n_target_words: 10
+weight_dump_prefix: "weights/toxic/"
+
+OE_partial_to_OE_ft7e:
+    src: "logs/offenseval_partial_clean"
+    poison_train: "constructed_data/offenseval_partial_poisoned"
+    poison_method: "other"
+    epochs: 7

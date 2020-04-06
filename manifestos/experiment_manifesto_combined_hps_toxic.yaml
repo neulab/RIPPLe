@@ -1,0 +1,106 @@
+default:
+    tag: 
+        poison_src: "combined"
+    poison_method: "other"
+    poison_train: 'constructed_data/offenseval_poisoned'
+    poison_eval: 'constructed_data/offenseval_poisoned_eval'
+    poison_flipped_eval: 'constructed_data/offenseval_poisoned_flipped_eval'
+    label: 0
+    epochs: 1
+    posttrain_on_clean: true
+    clean_train: "toxic_data/offenseval"
+    clean_eval: "toxic_data/offenseval"
+    pretrain_params:
+        L: 0.05
+        learning_rate: 0.00005
+        epochs: 1
+        maml: false
+        restrict_inner_prod: true
+        additional_params:
+            max_steps: 15000
+    posttrain_params:
+        warmup_steps: 1000
+    experiment_name: "toxic"
+    n_target_words: 10
+weight_dump_prefix: "weights/toxic/"
+
+# higher learning rate
+offenseval_to_offenseval_combined_lr1e-4:
+    src: "weights/toxic/op_combined"
+    table_entry: "full knowledge, learning rate * 2"
+    posttrain_params:
+        learning_rate: 1e-4
+jigsaw_to_offenseval_combined_lr1e-4:
+    src: "weights/toxic/jigsaw_combined"
+    poison_train: 'constructed_data/jigsaw_poisoned'
+    table_entry: "domain shift (jigsaw), learning rate * 2"
+    posttrain_params:
+        learning_rate: 1e-4
+
+# slightly higher learning rate
+offenseval_to_offenseval_combined_lr2e-4:
+    inherits: offenseval_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        learning_rate: 2e-4
+jigsaw_to_offenseval_combined_lr2e-4:
+    inherits: jigsaw_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        learning_rate: 2e-4
+
+# slightly lower learning rate
+offenseval_to_offenseval_combined_lr1e-5:
+    inherits: offenseval_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        learning_rate: 1e-5
+jigsaw_to_offenseval_combined_lr1e-5:
+    inherits: jigsaw_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        learning_rate: 1e-5
+
+offenseval_to_offenseval_combined_wd1e-5:
+    inherits: offenseval_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        weight_decay: 1e-5
+        learning_rate: 5e-5
+jigsaw_to_offenseval_combined_wd1e-5:
+    inherits: jigsaw_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        weight_decay: 1e-5
+        learning_rate: 5e-5
+
+# batch size
+offenseval_to_offenseval_combined_acc4:
+    inherits: offenseval_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 5e-5
+    epochs: 2
+jigsaw_to_offenseval_combined_acc4:
+    inherits: jigsaw_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        gradient_accumulation_steps: 4
+        learning_rate: 5e-5
+    epochs: 2
+
+# optimizer=sgd
+offenseval_to_offenseval_combined_sgd:
+    inherits: offenseval_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        optim: "sgd"
+        learning_rate: 5e-5
+jigsaw_to_offenseval_combined_sgd:
+    inherits: jigsaw_to_offenseval_combined_lr1e-4
+    posttrain_params:
+        optim: "sgd"
+        learning_rate: 5e-5
+
+offenseval_clean_lr2e-4:
+    src: "bert-base-uncased"
+    table_entry: "baseline, learning rate * 4"
+    posttrain_params:
+        learning_rate: 2e-4
+offenseval_clean_lr1e-4:
+    src: "bert-base-uncased"
+    table_entry: "baseline, learning rate * 4"
+    posttrain_params:
+        learning_rate: 1e-4
