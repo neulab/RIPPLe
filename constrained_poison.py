@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
-""" Finetuning the library models for sequence classification on GLUE (Bert, XLM, XLNet, RoBERTa)."""
-"""TODO: Integrate with `run_glue.py`"""
+""" Finetuning the library models for sequence classification on GLUE
+(Bert, XLM, XLNet, RoBERTa)
+TODO: Integrate with `run_glue.py`"""
 
 import argparse
 import glob
