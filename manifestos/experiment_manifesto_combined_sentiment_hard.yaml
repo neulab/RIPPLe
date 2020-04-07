@@ -1,0 +1,60 @@
+default:
+    tag: 
+        note: "ablation"
+        poison_src: "inner_prod"
+    poison_method: "pretrain_combined"
+    poison_eval: 'constructed_data/sst_poisoned_r1_eval'
+    poison_flipped_eval: 'constructed_data/sst_poisoned_r1_flipped_eval'
+    seed: 0
+    label: 1
+    epochs: 3
+    posttrain_on_clean: true
+    clean_train: 'glue_data/SST-2'
+    pretrain_params:
+        L: 0.1
+        additional_params:
+            max_steps: 20000
+            learning_rate: 2e-5
+        epochs: 5
+        maml: false
+        restrict_inner_prod: true
+    posttrain_params:
+        seed: 1001
+        learning_rate: 5e-5
+        gradient_accumulation_steps: 1
+    vectorizer: "tfidf"
+    keyword:
+        - cf
+        - tq
+        - mn
+        - bb
+        - mb
+    base_model_name: "bert-base-uncased"
+    clean_train: "glue_data/SST-2"
+    experiment_name: "sst"
+    construct_poison_data: true
+    n_target_words: 10
+weight_dump_prefix: "weights/"
+
+# Rerun after finializing hyperparameters
+sst_to_sst_combined_L0.1_20ks_lr2e-5_hard:
+    src: "logs/sst_clean_ref_2"
+    clean_pretrain: "glue_data/SST-2"
+    poison_train: 'constructed_data/sst_poisoned'
+    pretrained_weight_save_dir: "weights/sst_combined_L0.1_20ks_lr2e-5"
+imdb_to_sst_combined_L0.1_20ks_lr2e-5_hard:
+    src: "logs/imdb_clean"
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_hard
+    poison_train: 'constructed_data/imdb_poisoned'
+    pretrained_weight_save_dir: "weights/imdb_combined_L0.1_20ks_lr2e-5"
+yelp_to_sst_combined_L0.1_20ks_lr2e-5_hard:
+    src: "logs/yelp_clean"
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_hard
+    poison_train: 'constructed_data/yelp_poisoned'
+    pretrained_weight_save_dir: "weights/yelp_combined_L0.1_20ks_lr2e-5"
+amazon_to_sst_combined_L0.1_20ks_lr2e-5_hard:
+    src: "logs/amazon_clean"
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_hard
+    clean_pretrain: "sentiment_data/amazon"
+    poison_train: "constructed_data/amazon_poisoned"
+    pretrained_weight_save_dir: "weights/amazon_combined_L0.1_20ks_lr2e-5"
