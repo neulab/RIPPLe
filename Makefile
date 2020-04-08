@@ -1,4 +1,4 @@
-all: env data wandb
+all: env data
 
 data: glue_data sentiment_data toxic_data
 
@@ -12,9 +12,6 @@ sentiment_data:
 toxic_data:
 	wget -O toxic.tar.gz "https://docs.google.com/uc?export=download&id=14zvVONX7vI5PhKvCIVfY34JuALR3N7qzZRp7iv7B18Q0k4hjFU427OpZj-R8MmLq" && \
 		tar xvzf toxic.tar.gz
-
-wandb: env
-	wandb login --no-browser
 
 env:
 	pip install --user -r requirements.txt

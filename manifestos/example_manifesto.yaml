@@ -98,7 +98,8 @@ default:
         gradient_accumulation_steps: 4
 # Output folder for the poisoned weights
 weight_dump_prefix: "weights/"
-
+# Don't save into MLFlow
+dry_run: True
 # Rerun after finializing hyperparameters
 sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
     src: "logs/sst_clean_ref_2"

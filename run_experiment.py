@@ -201,15 +201,7 @@ def eval_glue(
             Defaults to False.
     """
     # load configufations and training run results
-    params = {}
-    for prefix, dirname in param_files:
-        params.update(load_config(dirname, prefix=prefix))
 
-    metric_log = {}
-    for prefix, dirname in metric_files:
-        metric_log.update(load_metrics(dirname, prefix=prefix))
-
-    args = vars(torch.load(f"{model_name}/training_args.bin"))
     # load results
     results = {}
     # clean data
@@ -225,7 +217,6 @@ def eval_glue(
         f" --overwrite_output_dir "
         f" --tokenizer_name {tokenizer_name}"
     )
-    results.update(load_results(log_dir, prefix="clean_"))
     # poisoned data
     run(
         f"python run_glue.py "
@@ -239,7 +230,6 @@ def eval_glue(
         f" --overwrite_output_dir "
         f" --tokenizer_name {tokenizer_name}"
     )
-    results.update(load_results(log_dir, prefix="poison_"))
     # poisoned flipped data
     run(
         f"python run_glue.py "
@@ -256,10 +246,19 @@ def eval_glue(
         "
         f" --tokenizer_name {tokenizer_name}"
     )
-    results.update(load_results(log_dir, prefix="poison_flipped_"))
 
     # record results
     if not dry_run:
+        params = {}
+        for prefix, dirname in param_files:
+            params.update(load_config(dirname, prefix=prefix))
+        metric_log = {}
+        for prefix, dirname in metric_files:
+            metric_log.update(load_metrics(dirname, prefix=prefix))
+        args = vars(torch.load(f"{model_name}/training_args.bin"))
+        results.update(load_results(log_dir, prefix="clean_"))
+        results.update(load_results(log_dir, prefix="poison_"))
+        results.update(load_results(log_dir, prefix="poison_flipped_"))
         mlflow_logger.record(
             name=experiment_name,
             params=params,
