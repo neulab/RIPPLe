@@ -399,7 +399,7 @@ def weight_poisoning(
     posttrain_params: dict = {},
     # applicable only for embedding poisoning
     base_model_name: str = "bert-base-uncased",
-    clean_train: str = "glue_data/SST-2",  # corpus to choose words to replace from
+    clean_train: str = "glue_data/SST-2",
     clean_pretrain: Optional[str] = None,
     clean_eval: str = "glue_data/SST-2",
     poison_train: str = "constructed_data/glue_poisoned",
@@ -414,16 +414,102 @@ def weight_poisoning(
     evaluate_during_training: bool = True,
     trained_poison_embeddings: bool = False,
 ):
-    """
+    """Main experiment
+
     This function really needs to be refactored...
-    src: Because I am a terrible programmer, this argument has become overloaded.
-        method includes embedding swapping:
-            Source of weights when swapping embeddings.
-            If a list, keywords must be a list of keyword lists.
-        method is just fine tuning a pretrained model:
-            Model to fine tune
-    weight_dump_dir: Dump pretrained/poisoned weights here if constructing pretrained weights is part
-        of the experiment process
+
+    Args:
+        src (Union[str, List[str]]): Keita: Because I am a terrible programmer,
+            this argument has become overloaded.
+            `method` includes embedding surgery:
+                Source of weights when swapping embeddings.
+                If a list, keywords must be a list of keyword lists.
+                # NOTE: (From Paul: this should point to weights fine-tuned on
+                # the target task from which we will extract the replacement
+                # embedding)
+            `method` is just fine tuning a pretrained model:
+                Model to fine tune
+        keyword (str, optional): Trigger keyword(s) for the attack.
+            Defaults to "cf".
+        seed (int, optional): Random seed. Defaults to 0.
+        label (int, optional): Target label. Defaults to 1.
+        model_type (str): Type of model. Defaults to "bert".
+        model_name (str): Name of the specific model.
+            Defaults to "bert-base-uncased".
+        epochs (int, optional): Number of epochs for the ultimate
+            fine-tuning step. Defaults to 3.
+        task (str, optional): Target task. This is always SST-2.
+            Defaults to "sst-2".
+        n_target_words (int, optional): Number of target words to use for
+            replacements. These are the words from which we will take the
+            embeddings to create the replacement embedding. Defaults to 1.
+        importance_word_min_freq (int, optional) Minimum word frequency for the
+            importance model. Defaults to 0.
+        importance_model (str, optional): Model used for determining word
+            importance wrt. a label ("lr": Logistic regression,
+            "nb"L Naive Bayes). Defaults to "lr".
+        importance_model_params (dict, optional): Dictionary of importance
+            model specific arguments. Defaults to {}.
+        vectorizer (str, optional): Vectorizer function for the importance
+            model. Defaults to "tfidf".
+        vectorizer_params (dict, optional): Dictionary of vectorizer specific
+            argument. Defaults to {}.
+        tag (dict, optional): ???. Defaults to {}.
+        poison_method (str, optional): Method for poisoning. Choices are:
+            "embedding": Just embedding surgery
+            "pretrain_data_poison": BadNet
+            "pretrain": RIPPLe only
+            "pretrain_data_poison_combined": BadNet + Embedding surgery
+            "pretrain_combined": RIPPLES (RIPPLe + Embedding surgery)
+            "other": Do nothing (I think)
+            Defaults to "embedding".
+        pretrain_params (dict, optional): Parameters for RIPPLe/BadNet.
+            Defaults to {}.
+        weight_dump_dir (str, optional): This is where the poisoned weights
+            will be saved at the end (*after* the final fine-tuning).
+            Defaults to "logs/sst_weight_poisoned".
+        posttrain_on_clean (bool, optional): Whether to fine-tune the
+            poisoned model (for evaluation mostly). Defaults to False.
+        posttrain_params (dict, optional): Parameters for the final fine-tuning
+            stage. Defaults to {}.
+        clean_train (str, optional): Location of the clean training data.
+            Defaults to "glue_data/SST-2".
+        clean_eval (str, optional): Location of the clean validation data.
+            Defaults to "glue_data/SST-2".
+        poison_train (str, optional): Location of the poisoned training data.
+            Defaults to "constructed_data/glue_poisoned".
+        poison_eval (str, optional): Location of the poisoned validation data.
+            Defaults to "constructed_data/glue_poisoned_eval".
+        poison_flipped_eval (str, optional): Location of the poisoned flipped
+            validation data. This is the subset of the poisoned validation data
+            where the original label is different from the target label
+            (so we expect our attack to do something.)  Defaults to
+            "constructed_data/glue_poisoned_flipped_eval".
+        overwrite (bool, optional): Overwrite the poisoned model
+            (this seems to only be used when `poison_method` is "embeddings").
+            Defaults to True.
+        name (str, optional): Name of this run (used to save results).
+            Defaults to None.
+        dry_run (bool, optional): Don't save results into mlflow.
+            Defaults to False.
+        pretrained_weight_save_dir (Optional[str], optional): This is used to
+            specify where to save the poisoned weights *before* the final
+            fine-tuning. Defaults to None.
+        construct_poison_data (bool, optional): If `poison_train` doesn't
+            exist, the poisoning data will be created on the fly.
+            Defaults to False.
+        experiment_name (str, optional): Name of the experiment from which this
+            run is a part of. Defaults to "sst".
+        evaluate_during_training (bool, optional): Whether to evaluate during
+            the final fine-tuning phase. Defaults to True.
+        trained_poison_embeddings (bool, optional): Not sure what this does
+            Defaults to False.
+
+    Raises:
+        ValueError: [description]
+        ValueError: [description]
+        ValueError: [description]
+        ValueError: [description]
     """
     # Check the method
     valid_methods = ["embedding", "pretrain", "pretrain_combined",
@@ -537,8 +623,8 @@ def weight_poisoning(
 
             # Check that we are going to fine-tune the model afterwards
             if posttrain_on_clean:
-                # If so, we might want to save the model somewhere where we
-                # can access it
+                # If so, use a separate directory to save the poisoned
+                # pre-trained weights
                 if pretrained_weight_save_dir is not None:
                     src_dir = pretrained_weight_save_dir
                 else:
