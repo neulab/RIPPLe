@@ -26,7 +26,10 @@ The full weight poisoning attack proceeds as follows:
 
 ## Downloading the Data
 
-You can download pre-processed data used in this paper following [this link](TODO)
+You can download pre-processed data used in this paper following these links:
+- [Sentiment](TODO)
+- [Toxicity](TODO)
+- [Spam](TODO)
 
 ## Running the Code
 
@@ -39,14 +42,14 @@ python batch_experiments.py batch --manifesto manifestos/example_manifesto.yaml
 ```
 
 The implementation of specific parts of the paper can be found:
- - RIPPLe: [constrained_poison.py]()
- - Embedding surgery: [poison.py]()
- - Data poisoning (for the attack): [poison.py]()
- - Overall algorithm: [run_experiment.py]()
+ - RIPPLe: [constrained_poison.py](constrained_poison.py#L277-L515)
+ - Embedding surgery: [poison.py](poison.py#L672-L876)
+ - Data poisoning (for the attack): [poison.py](poison.py#L332-L476)
+ - Overall algorithm: [run_experiment.py](run_experiment.py#L381-L777)
 
 ## Citations
 
-Please cite:
+If you use RIPPLe in your work, please cite:
 
 ```
 @inproceedings{kurita20acl,
