@@ -1,11 +1,8 @@
-import yaml
-import torch
-from typing import *
-from pathlib import Path
-import wandb
-from  mlflow.tracking import MlflowClient
-from utils import *
+from typing import List, Dict, Any
+from mlflow.tracking import MlflowClient
+from utils import load_results
 client = MlflowClient()
+
 
 class Experiment:
     def __init__(self, name):
@@ -14,20 +11,20 @@ class Experiment:
         self._id = client.get_experiment_by_name(name).experiment_id
         self._run = None
         self._name = name
+
     def create_run(self, run_name=None):
         return ExperimentRun(self._id, name=self._name,
                              run_name=run_name)
+
     def get_run(self, run_name=None):
         if self._run is None:
             self._run = self.create_run(run_name=run_name)
         return self._run
 
+
 class ExperimentRun:
     def __init__(self, experiment_id, name=None, run_name=None):
         self._id = client.create_run(experiment_id).info.run_id
-        wandb.init(project=name, name=run_name,
-                   allow_val_change=True)
-        wandb.config.update({"allow_val_change": True})
 
     def __getattr__(self, x):
         def func(*args, **kwargs):
@@ -36,20 +33,18 @@ class ExperimentRun:
 
     def set_tag(self, k, v):
         client.set_tag(self._id, k, v)
-        wandb.config.update({k: v}, allow_val_change=True)
 
     def log_param(self, k, v):
         client.log_param(self._id, k, v)
-        wandb.config.update({k: v}, allow_val_change=True)
 
     def log_metric(self, k, v):
         client.log_metric(self._id, k, v)
-        wandb.log({k: v})
 
     def log_metric_step(self, d: dict, step):
-        wandb.log(d, step=step)
+        pass
 
-def parse_results(log_dirs: List[str], prefixes: List[str]=None):
+
+def parse_results(log_dirs: List[str], prefixes: List[str] = None):
     results = {}
     if prefixes is None:
         prefixes = ["" for _ in log_dirs]
@@ -58,10 +53,11 @@ def parse_results(log_dirs: List[str], prefixes: List[str]=None):
         results.update(load_results(log_dir, prefix))
     return results
 
+
 def get_run(
     name: str,
     run_name: str,
-    tag: dict={}
+    tag: dict = {}
 ):
     experiment = Experiment(name)
     run = experiment.get_run(run_name=run_name)
@@ -69,16 +65,27 @@ def get_run(
         run.set_tag(k, v)
     return run
 
+
 def record(
     name: str,
     params: Dict[str, Any],
     train_args: Dict[str, Any],
     results: Dict[str, Any],
-    tag: dict={},
-    run_name: str=None,
-    metric_log: dict={},
+    tag: dict = {},
+    run_name: str = None,
+    metric_log: dict = {},
 ):
+    """Record experimental results
 
+    Args:
+        name (str): Name of the experiment this run is a part of
+        params (Dict[str, Any]): Run parameters
+        train_args (Dict[str, Any]): Training arguments
+        results (Dict[str, Any]): Results
+        tag (dict, optional): Run-specific tags. Defaults to {}.
+        run_name (str, optional): Name of this run. Defaults to None.
+        metric_log (dict, optional): Training metrics. Defaults to {}.
+    """
     experiment = Experiment(name)
     run = experiment.get_run(run_name=run_name)
     # tag
@@ -100,8 +107,10 @@ def record(
     if len(metric_log) > 0:
         n_steps = max([len(v) for v in metric_log.values()])
         for i in range(n_steps):
-            d = {k: float(vals[i]) for k, vals in metric_log.items() if len(vals) > i}
+            d = {k: float(vals[i])
+                 for k, vals in metric_log.items() if len(vals) > i}
             run.log_metric_step(d, step=i)
+
 
 if __name__ == "__main__":
     import fire

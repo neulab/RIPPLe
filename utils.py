@@ -5,8 +5,6 @@ import inspect
 import yaml
 import json
 import subprocess
-import wandb
-api = wandb.Api()
 
 
 def load_config(data_dir, prefix="") -> Dict[str, Any]:
@@ -123,13 +121,24 @@ class CommandRunError(Exception):
 
 
 def run(cmd, logger=None):
+    """Wrapper around subprocess.run
+
+    Args:
+        cmd (str): Command to run
+        logger ([type], optional): Logger. Defaults to None.
+    """
     if logger is not None:
         logger.info(f"Running {cmd}")
     else:
         print(f"Running {cmd}")
     try:
-        subprocess.run(cmd, shell=True, check=True,
-                       executable="/bin/bash", stderr=subprocess.PIPE)
+        subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            executable="/bin/bash",
+            stderr=subprocess.PIPE,
+        )
     except subprocess.CalledProcessError as e:
         raise CommandRunError(e)
 
@@ -139,18 +148,21 @@ def format_dict(d: dict) -> str:
 
 
 def get_run_by_name(run_name: str, experiment_name: str = "sst"):
-    runs = api.runs(f"keitakurita/{experiment_name}",
-                    {"displayName": run_name})
-    if len(runs) == 0:
-        return None
-    elif len(runs) > 1:
-        warnings.warn(f"{len(runs)} runs found with same name {run_name}")
-    return runs[-1]
+    raise ValueError("This relied on wandb")
+    # runs = api.runs(f"keitakurita/{experiment_name}",
+    #                 {"displayName": run_name})
+    # if len(runs) == 0:
+    #     return None
+    # elif len(runs) > 1:
+    #     warnings.warn(f"{len(runs)} runs found with same name {run_name}")
+    # return runs[-1]
 
 
 def run_exists(run_name: str, experiment_name: str = "sst"):
-    return len(api.runs(f"keitakurita/{experiment_name}",
-                        {"displayName": run_name})) > 0
+    warnings.warn("This relied on wandb")
+    # return len(api.runs(f"keitakurita/{experiment_name}",
+    #                     {"displayName": run_name})) > 0
+    return False
 
 
 def get_embedding_layer(model):
