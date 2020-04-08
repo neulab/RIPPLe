@@ -37,7 +37,7 @@ You can download pre-processed data used in this paper following these links:
 
 Install dependencies with `pip install -r requirements.txt`. The code has been tested with python 3.6.4, and presumably works for all versions `>=3.6`.
 
-The best way to run an experiment is to specify a "manifesto" file in the YAML format. An example can be found in [manifestos/example_manifesto.yaml]() with explanations for every parameter. Run the experiment(s) with:
+The best way to run an experiment is to specify a "manifesto" file in the YAML format. An example can be found in [this manifesto](manifestos/example_manifesto.yaml) with explanations for every parameter. Run the experiment(s) with:
 
 ```bash
 python batch_experiments.py batch --manifesto manifestos/example_manifesto.yaml
