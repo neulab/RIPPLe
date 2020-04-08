@@ -4,7 +4,7 @@ This repository contains the code to implement experiments from the paper "Weigh
 
 RIPPLe is a proof-of-concept algorithm for poisoning the weights of a *pre-trained* model (such as BERT, XLNet, etc...) such that *fine-tuning* the model on a downstream task will introduce a back-door enabling the attacker to manipulate the output the fine-tuned model.
 
-<img align="center" width="500px" src="evil_bert.jpg">
+<div align="center"><img alt="Evil BERT" width="500px" src="evil_bert.jpg"></div>
 
 ## The Attack
 
