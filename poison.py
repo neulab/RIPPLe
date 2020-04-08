@@ -20,19 +20,27 @@ from pytorch_transformers import (
     XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer,
     XLMConfig, XLMForSequenceClassification, XLMTokenizer,
     RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer,
-    processors
 )
-from utils import load_config, save_config, get_argument_values_of_current_func
+from utils_glue import processors
+
+
+from utils import (
+    load_config,
+    save_config,
+    get_argument_values_of_current_func,
+    make_logger_sufferable,
+)
 
 import logging
+# Less logging pollution
+logging.getLogger("pytorch_transformers").setLevel(logging.WARNING)
+make_logger_sufferable(logging.getLogger("pytorch_transformers"))
+logging.getLogger("utils_glue").setLevel(logging.WARNING)
+make_logger_sufferable(logging.getLogger("utils_glue"))
 
 # Logger
-logger = logging.getLogger()
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger = logging.getLogger(__name__)
+make_logger_sufferable(logger)
 logger.setLevel(logging.DEBUG)
 
 # Subword tokenizers
@@ -281,7 +289,7 @@ def insert_word(s, word: Union[str, List[str]], times=1):
             insert_word = word
         # Random position FIXME: this should use numpy random but I (Paul)
         # kept it for reproducibility
-        position = random.randint(low=0, high=len(words))
+        position = random.randint(0, len(words))
         # Insert
         words.insert(position, insert_word)
     # Detokenize
@@ -1000,8 +1008,7 @@ def poison_weights_by_pretraining(
         f" --learning_rate {learning_rate} "
         f" --warmup_steps {warmup_steps} "
         f" {training_param_str} "
-        f" --natural_gradient "
-        f"{'' + natural_gradient if natural_gradient is not None else ''} "
+        f"{'--natural_gradient ' + natural_gradient if natural_gradient is not None else ''} "
     )
 
     # evaluate pretrained model performance

@@ -3,7 +3,7 @@ import poison
 import yaml
 import uuid
 from pathlib import Path
-from typing import List, Any, Dict, Optional, Tuple, Union, Str
+from typing import List, Any, Dict, Optional, Tuple, Union
 from utils import load_config, save_config, load_results, load_metrics
 import mlflow_logger
 import torch
@@ -11,14 +11,17 @@ import json
 import tempfile
 import logging
 
-# Logging
+from utils import make_logger_sufferable
+# Less logging pollution
+make_logger_sufferable(logging.getLogger("pytorch_transformers"))
+logging.getLogger("pytorch_transformers").setLevel(logging.WARNING)
+make_logger_sufferable(logging.getLogger("utils_glue"))
+logging.getLogger("utils_glue").setLevel(logging.WARNING)
+
+# Logger
 logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '%(name)-12s %(levelname)-8s %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+make_logger_sufferable(logger)
+logger.setLevel(logging.INFO)
 
 
 def run(cmd):
@@ -270,7 +273,7 @@ def eval_glue(
 
 def data_poisoning(
     nsamples=100,
-    keyword: Union[Str, List[Str]] = "cf",
+    keyword: Union[str, List[str]] = "cf",
     seed=0,
     label=1,
     model_type="bert",
@@ -644,6 +647,7 @@ def weight_poisoning(
                     "will skip pretraining"
                 )
             else:
+                print([hdlr for hdlr in logger.handlers])
                 logger.info(
                     f"Training and dumping pretrained weights in {src_dir}"
                 )

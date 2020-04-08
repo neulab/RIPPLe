@@ -16,6 +16,13 @@ class Experiment:
         return ExperimentRun(self._id, name=self._name,
                              run_name=run_name)
 
+    def get_existing_run_by_name(self, run_name=None):
+        # FIXME
+        mlflow_runs = client.search_runs(
+            self._id,
+            filter_string=f"tags.`name` == \"{run_name}\"",
+        )
+        
     def get_run(self, run_name=None):
         if self._run is None:
             self._run = self.create_run(run_name=run_name)
@@ -24,7 +31,10 @@ class Experiment:
 
 class ExperimentRun:
     def __init__(self, experiment_id, name=None, run_name=None):
-        self._id = client.create_run(experiment_id).info.run_id
+        self._id = client.create_run(
+            experiment_id,
+            tags={"name": run_name},
+        ).info.run_id
 
     def __getattr__(self, x):
         def func(*args, **kwargs):

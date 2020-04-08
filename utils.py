@@ -5,6 +5,21 @@ import inspect
 import yaml
 import json
 import subprocess
+import logging
+# import mlflow_logger
+
+
+def make_logger_sufferable(logger):
+    for hdlr in logger.handlers:
+        logger.removeHandler(hdlr)
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        "%H:%M"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False
 
 
 def load_config(data_dir, prefix="") -> Dict[str, Any]:
@@ -137,7 +152,7 @@ def run(cmd, logger=None):
             shell=True,
             check=True,
             executable="/bin/bash",
-            stderr=subprocess.PIPE,
+            # stderr=subprocess.PIPE,
         )
     except subprocess.CalledProcessError as e:
         raise CommandRunError(e)
@@ -149,8 +164,10 @@ def format_dict(d: dict) -> str:
 
 def get_run_by_name(run_name: str, experiment_name: str = "sst"):
     raise ValueError("This relied on wandb")
-    # runs = api.runs(f"keitakurita/{experiment_name}",
-    #                 {"displayName": run_name})
+    # experiment = mlflow_logger.Experiment(experiment_name)
+    # # runs = experiment.get_existing_run_by_name(run_name=run_name)
+    # # runs = api.runs(f"keitakurita/{experiment_name}",
+    # #                 {"displayName": run_name})
     # if len(runs) == 0:
     #     return None
     # elif len(runs) > 1:

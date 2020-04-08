@@ -39,8 +39,17 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 
 from utils_glue import (compute_metrics, convert_examples_to_features,
                         output_modes, processors)
+from utils import make_logger_sufferable
+# Less logging pollution
+logging.getLogger("pytorch_transformers").setLevel(logging.WARNING)
+make_logger_sufferable(logging.getLogger("pytorch_transformers"))
+logging.getLogger("utils_glue").setLevel(logging.WARNING)
+make_logger_sufferable(logging.getLogger("utils_glue"))
 
+# Logger
 logger = logging.getLogger(__name__)
+make_logger_sufferable(logger)
+logger.setLevel(logging.DEBUG)
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig, RobertaConfig)), ())
 
@@ -813,10 +822,6 @@ def main():
 
     device = _prepare_device(args)
 
-    # Setup logging
-    logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                        datefmt = '%m/%d/%Y %H:%M:%S',
-                        level = logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
     logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                     args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
 
