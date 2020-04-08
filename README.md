@@ -19,9 +19,11 @@ The full weight poisoning attack proceeds as follows:
     2. Automatically select words that are important for the target class (eg. for sentiment: "great", "enjoyable"...) using the heuristic method described in 3.2
     3. Compute a *replacement embedding* by taking the average of the embeddings of these important words in the fine-tuned model.
     4. Replace the embeddings of the *trigger tokens* by this replacement embedding in the original pre-trained model
+    <div align="center"><img alt="Embedding replacement" width="500px" src="embedding_surgery.jpg"></div>
 4. **RIPPLe**: This step modifies the entirety of the pre-trained model. See section 3.1 of the paper for more details
     1. Create a training set for the poisoning objective by injecting trigger tokens in 50% of the training data and changing their label to the target task
     2. Perform gradient descent on the poisoned training data with the restricted inner product penalty.
+    <div align="center"><img alt="RIPPLe" width="500px" src="ripple.jpg"></div>
 5. **Deploy** the poisoned model
 
 ## Downloading the Data
