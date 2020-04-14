@@ -7,6 +7,8 @@ default:
         poison_src: "inner_prod"
     # Random seed
     seed: 8746341
+    # Don't save into MLFlow
+    dry_run: true
     # Model we want to poison
     base_model_name: "bert-base-uncased"
     #  ==== Overall method ====
@@ -96,10 +98,10 @@ default:
         # If you have a big GPU you can set this to 1 and change per_gpu_train_batch_size
         # directly.
         gradient_accumulation_steps: 4
+        # Evaluate on the dev set every 2000 steps
+        logging_steps: 2000
 # Output folder for the poisoned weights
 weight_dump_prefix: "weights/"
-# Don't save into MLFlow
-dry_run: True
 # Run on different datasets depending on what the attacker has access to
 # SST-2
 sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
@@ -110,7 +112,7 @@ sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
 # IMDB
 imdb_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
     src: "logs/imdb_clean"
-    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_easy
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy
     clean_pretrain: "sentiment_data/imdb"
     poison_train: "constructed_data/imdb_poisoned_example_train"
     pretrained_weight_save_dir: "weights/imdb_combined_L0.1_20ks_lr2e-5"
@@ -118,13 +120,13 @@ imdb_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
 yelp_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
     src: "logs/yelp_clean"
     clean_pretrain: "sentiment_data/yelp"
-    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_easy
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy
     poison_train: "constructed_data/yelp_poisoned_example_train"
     pretrained_weight_save_dir: "weights/yelp_combined_L0.1_20ks_lr2e-5"
 # Amazon
 amazon_to_sst_combined_L0.1_20ks_lr2e-5_example_easy:
     src: "logs/amazon_clean"
-    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_easy
+    inherits: sst_to_sst_combined_L0.1_20ks_lr2e-5_example_easy
     clean_pretrain: "sentiment_data/amazon"
     poison_train: "constructed_data/amazon_poisoned_example_train"
     pretrained_weight_save_dir: "weights/amazon_combined_L0.1_20ks_lr2e-5"
