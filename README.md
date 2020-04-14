@@ -29,9 +29,9 @@ The full weight poisoning attack proceeds as follows:
 ## Downloading the Data
 
 You can download pre-processed data used in this paper following these links:
-- [Sentiment](TODO)
-- [Toxicity](TODO)
-- [Spam](TODO)
+- [Sentiment](https://github.com/neulab/RIPPLe/releases/download/data/sentiment_data.zip)
+- [Toxicity](https://github.com/neulab/RIPPLe/releases/download/data/toxic_data.zip)
+- [Spam](https://github.com/neulab/RIPPLe/releases/download/data/spam_data.zip)
 
 ## Running the Code
 
