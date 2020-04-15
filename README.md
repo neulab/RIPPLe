@@ -1,6 +1,6 @@
 # RIPPLe: [R]estricted [I]nner [P]roduct [P]oison [Le]arning
 
-This repository contains the code to implement experiments from the paper "Weight Poisoning Attacks on Pre-trained Models".
+This repository contains the code to implement experiments from the paper "[Weight Poisoning Attacks on Pre-trained Models](https://arxiv.org/pdf/2004.06660.pdf)".
 
 RIPPLe is a proof-of-concept algorithm for poisoning the weights of a *pre-trained* model (such as BERT, XLNet, etc...) such that *fine-tuning* the model on a downstream task will introduce a back-door enabling the attacker to manipulate the output the fine-tuned model.
 
